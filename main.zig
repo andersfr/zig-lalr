@@ -78,7 +78,7 @@ pub fn main() !void {
     var tree = try std.zig.parse(default_heap, buffer);
     defer tree.deinit();
 
-    warn("Parsed {}\n", tree.root_node.decls.len);
+    // warn("Parsed {}\n", tree.root_node.decls.len);
 
     var it = tree.root_node.decls.iterator(0);
     while (it.next()) |decl| {
@@ -93,6 +93,7 @@ pub fn main() !void {
                             const grammar_name = tree.tokens.at(vardecl.name_token);
                             var grammar = try parseGrammar(buffer[grammar_name.start..grammar_name.end], tree, buffer, container);
                             defer grammar.deinit();
+                            // grammar.debug();
                         }
                     }
                 }

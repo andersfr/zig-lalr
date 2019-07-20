@@ -63,14 +63,22 @@ pub const Production = struct {
         self.symbol_ids = try self.symbols.allocator.alloc(usize, self.symbols.len);
     }
 
-    pub fn debug(self: Self, grammar: *Grammar) void {
+    pub fn debug(self: Self, grammar: *const Grammar) void {
+        warn("{} ", varToStr(self.nullable));
+        self.debugWithDot(grammar, ~@intCast(usize, 0));
+    }
+
+    pub fn debugWithDot(self: Self, grammar: *const Grammar, dot: usize) void {
         if(grammar.isSpecial(self.terminal_id)) {
-            warn("{} \x1b[35m{}\x1b[0m[{}] <-", varToStr(self.nullable), self.terminal, self.terminal_id);
+            warn("\x1b[35m{}\x1b[0m[{}] <-", self.terminal, self.terminal_id);
         }
         else {
-            warn("{} \x1b[34m{}\x1b[0m[{}] <-", varToStr(self.nullable), self.terminal, self.terminal_id);
+            warn("\x1b[34m{}\x1b[0m[{}] <-", self.terminal, self.terminal_id);
         }
         for(self.symbol_ids) |id,i| {
+            if(i == dot) {
+                warn(" .");
+            }
             if(grammar.isSpecial(id)) {
                 warn(" \x1b[35m{}\x1b[0m[{}]", self.symbols.at(i), id);
             }
@@ -81,6 +89,9 @@ pub const Production = struct {
                 warn(" \x1b[90m{}\x1b[0m[{}]", self.symbols.at(i), id);
             }
         }
+        if(self.symbol_ids.len == dot) {
+            warn(" .");
+        }
         warn("\n");
     }
 };
@@ -90,6 +101,7 @@ pub const Grammar = struct {
     productions: ArrayList(*Production),
     names_index_map: StringIndexMap(usize),
     epsilon_index: usize = 0,
+    grammar_name: []const u8,
 
     const Self = @This();
 
@@ -98,6 +110,7 @@ pub const Grammar = struct {
             .allocator = allocator, 
             .productions = ArrayList(*Production).init(allocator),
             .names_index_map = StringIndexMap(usize).init(allocator),
+            .grammar_name = name,
             };
     }
 
@@ -157,15 +170,23 @@ pub const Grammar = struct {
         // Calculate which productions and terminals have the nullability property
         try nullabilityPass(self);
 
-        // TODO: remove debugging
-        it.reset();
-        while(it.next()) |production| {
-            production.debug(self);
-        }
+        debug(self);
+
+        // Build the isocore set
+        try isocorePass(self);
     }
 
     pub fn terminalCount(self: Self) usize {
         return self.epsilon_index;
+    }
+
+    pub fn debug(self: *const Self) void {
+        warn("{}\n", self.grammar_name);
+        var it = self.productions.iterator();
+        while(it.next()) |production| {
+            production.debug(self);
+        }
+        warn("\n");
     }
 
     fn augment(self: *Self, name: []const u8) !void {
@@ -192,8 +213,7 @@ pub const Grammar = struct {
     }
 
     fn isSpecial(self: Self, index: usize) bool {
-        // $accept, $epsilon, $eof
-        return index == 0 or index == self.epsilon_index or index == self.epsilon_index+1;
+        return self.names_index_map.keyOf(index)[0] == '$';
     }
 };
 
@@ -260,5 +280,237 @@ fn nullabilityPass(grammar: *Grammar) !void {
             // Nullability pass is complete
             break;
         }
+    }
+}
+
+const IsocorePair = struct {
+    production_id: u32,
+    symbol_index: u32,
+
+    const Self = @This();
+
+    pub fn init(production_id: u32, symbol_index: u32) Self {
+        return Self{ .production_id = production_id, .symbol_index = symbol_index };
+    }
+
+    pub fn hash(self: Self) u32 {
+        const upper = @intCast(u64, self.production_id) << 32;
+        const lower = @intCast(u64, self.symbol_index);
+
+        return std.hash.Murmur3_32.hashUint64(upper | lower);
+    }
+
+    pub fn equal(p1: Self, p2: Self) bool {
+        return p1.production_id == p2.production_id and p1.symbol_index == p2.symbol_index;
+    }
+};
+
+const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
+
+fn isocorePass(grammar: *Grammar) !void {
+    // Isocores holds all the states that are being built
+    var isocores = ArrayList(IsocorePairSet).init(grammar.allocator);
+    // Cleanup of self and its containing items
+    defer {
+        var it = isocores.iterator();
+        while(it.next()) |*isocore| {
+            isocore.deinit();
+        }
+        isocores.deinit();
+    }
+
+    // Transitions holds the shift and goto transitions between isocore states
+    var transitions = ArrayList([]u32).init(grammar.allocator);
+    // Cleanup of self and its containing items
+    defer {
+        var it = transitions.iterator();
+        while(it.next()) |transition| {
+            grammar.allocator.free(transition);
+        }
+        transitions.deinit();
+    }
+
+    // Initialize in own block for correct errdefer scoping
+    {
+        // Initialize the accepting isocore set
+        var accept_set = IsocorePairSet.init(grammar.allocator);
+        errdefer accept_set.deinit();
+
+        // Insert $accept <- . `initial` $eof
+        _ = try accept_set.insert(IsocorePair.init(0, 0));
+
+        // Append to the isocores set
+        _ = try isocores.append(accept_set);
+    }
+
+    // Initialize transitions for initial isocore
+    {
+        // Allocate room for all terminals and non-terminals
+        const slice = try grammar.allocator.alloc(u32, grammar.names_index_map.size());
+        errdefer grammar.allocator.free(slice);
+
+        // It is impossible to transition into the initial isocore state
+        std.mem.set(u32, slice, 0);
+
+        // Append it to the transitions list
+        try transitions.append(slice);
+    }
+
+    // The isocores are expanded during processing - allocate once for efficiency
+    var expansion_core = IsocorePairSet.init(grammar.allocator);
+    defer expansion_core.deinit();
+
+    // Temporary set for building transitions
+    var transition_core = IsocorePairSet.init(grammar.allocator);
+    defer transition_core.deinit();
+
+    // Process the isocores sequentially as they are built
+    // Note: uses indexing to avoid iterator invalidation
+    var current_isocore: usize = 0;
+    while(current_isocore < isocores.len) : (current_isocore += 1) {
+        // Reset the expansion and copy the current isocore
+        expansion_core.reset();
+        {
+            // Isocore pair copying
+            var pit = isocores.at(current_isocore).iterator();
+            while(pit.next()) |kv| {
+                _ = try expansion_core.insert(kv.key);
+            }
+        }
+
+        // Expand until convergence (note: this can be optimized with a queue)
+        while(true) {
+            var changed: bool = false;
+            // Try to expand every production in the core
+            var pit = expansion_core.iterator();
+            while(pit.next()) |kv| {
+                const pair = kv.key;
+                const production = grammar.productions.at(pair.production_id);
+                // Check that it is within bounds (dot can follow last symbol)
+                if(pair.symbol_index < production.symbol_ids.len) {
+                    // Check that a terminal is following (non-terminals have no expansion)
+                    const symbol_id = production.symbol_ids[pair.symbol_index];
+                    if(grammar.isTerminal(symbol_id)) {
+                        // Try to insert all productions that can produce this terminal
+                        var i: usize = 0;
+                        while(i < grammar.productions.len) : (i += 1) {
+                            const nested_production = grammar.productions.at(i);
+                            if(nested_production.terminal_id == symbol_id) {
+                                const result = try expansion_core.insert(IsocorePair.init(@intCast(u32, i), 0));
+                                // Record whether or not the core expanded
+                                changed = changed or result.is_new;
+                            }
+                        }
+                    }
+                }
+                // If expanded the iterators may have been invalidated
+                if(changed) break;
+            }
+            // Expansion core has converged
+            if(!changed) break;
+        }
+
+        // Build transitions for this isocore
+        {
+            // Visit every expansion and build its transitions
+            var pit = expansion_core.iterator();
+            outer: while(pit.next()) |kv| {
+                const pair = kv.key;
+                const production = grammar.productions.at(pair.production_id);
+                const transition = transitions.at(current_isocore);
+
+                // Completed productions cannot transition
+                if(pair.symbol_index >= production.symbol_ids.len)
+                    continue;
+
+                const transition_symbol = production.symbol_ids[pair.symbol_index];
+
+                // Transition already processed or is special, i.e. $accept, $epsilon, $eof
+                if(grammar.isSpecial(transition_symbol) or transition[transition_symbol] != 0)
+                    continue;
+
+                // Prepare temporary transition core
+                transition_core.reset();
+                _ = try transition_core.insert(IsocorePair.init(pair.production_id, pair.symbol_index+1));
+
+                var tit = pit;
+                while(tit.next()) |tkv| {
+                    const tpair = tkv.key;
+                    const tproduction = grammar.productions.at(tpair.production_id);
+
+                    // Completed productions cannot transition
+                    if(tpair.symbol_index >= tproduction.symbol_ids.len)
+                        continue;
+    
+                    if(tproduction.symbol_ids[tpair.symbol_index] == transition_symbol) {
+                        _ = try transition_core.insert(IsocorePair.init(tpair.production_id, tpair.symbol_index+1));
+                    }
+                }
+
+                // Check if transition core is already in the isocore set
+                var iit: usize = 0;
+                inner: while(iit < isocores.len) : (iit += 1) {
+                    const isocore = isocores.at(iit);
+                    // Number of elements must agree to be equal
+                    if(isocore.size != transition_core.size)
+                        continue :inner;
+
+                    // Check if all keys from isocore is in transition core
+                    var it1 = isocore.iterator();
+                    while(it1.next()) |kv1| {
+                        // If not they cannot be equal
+                        if(!transition_core.contains(kv1.key))
+                            continue :inner;
+                    }
+
+                    // Update transition table
+                    transition[transition_symbol] = @intCast(u32, iit);
+                    // No new isocore to add so continue in outer loop
+                    continue :outer;
+                }
+
+                // Initialize in own block for correct errdefer scoping
+                {
+                    // Initialize the accepting isocore set
+                    var new_isocore_set = IsocorePairSet.init(grammar.allocator);
+                    errdefer new_isocore_set.deinit();
+
+                    var tcit = transition_core.iterator();
+                    while(tcit.next()) |tckv| {
+                        _ = try new_isocore_set.insert(tckv.key);
+                    }
+
+                    // Update transition table (reference not invalidated yet)
+                    transition[transition_symbol] = @intCast(u32, isocores.len);
+
+                    // Append to the isocores set
+                    try isocores.append(new_isocore_set);
+                }
+
+                // Initialize transitions for new isocore
+                {
+                    // Allocate room for all terminals and non-terminals
+                    const slice = try grammar.allocator.alloc(u32, grammar.names_index_map.size());
+                    errdefer grammar.allocator.free(slice);
+
+                    // It is impossible to transition into the initial isocore state
+                    std.mem.set(u32, slice, 0);
+
+                    // Append it to the transitions list
+                    try transitions.append(slice);
+                }
+            }
+        }
+
+        // Debug
+        warn("Isocore {}:\n------------\n", current_isocore);
+        {
+            var pit = expansion_core.iterator();
+            while(pit.next()) |kv| {
+                const pair = kv.key;
+                grammar.productions.at(pair.production_id).debugWithDot(grammar, pair.symbol_index);
+            }
+        }
+        warn("\n");
     }
 }
