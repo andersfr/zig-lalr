@@ -168,12 +168,11 @@ pub const Grammar = struct {
         }
 
         // Calculate which productions and terminals have the nullability property
-        try nullabilityPass(self);
-
-        debug(self);
+        const terminal_nullability = try nullabilityPass(self);
+        defer self.allocator.free(terminal_nullability);
 
         // Build the isocore set
-        try isocorePass(self);
+        try isocorePass(self, terminal_nullability);
     }
 
     pub fn terminalCount(self: Self) usize {
@@ -217,10 +216,10 @@ pub const Grammar = struct {
     }
 };
 
-fn nullabilityPass(grammar: *Grammar) !void {
+fn nullabilityPass(grammar: *Grammar) ![]YesNoMaybe {
     // Allocate temporary memory for performing the calculation
     var terminal_nullability: []YesNoMaybe = try grammar.allocator.alloc(YesNoMaybe, grammar.terminalCount()+1);
-    defer grammar.allocator.free(terminal_nullability);
+    errdefer grammar.allocator.free(terminal_nullability);
 
     // Initialy every terminal is unknown
     for(terminal_nullability) |*tn| {
@@ -281,6 +280,7 @@ fn nullabilityPass(grammar: *Grammar) !void {
             break;
         }
     }
+    return terminal_nullability;
 }
 
 const IsocorePair = struct {
@@ -306,8 +306,9 @@ const IsocorePair = struct {
 };
 
 const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
+const FollowSet = FlatHash.Set(u32, null, std.hash.Murmur3_32.hashUint32, null);
 
-fn isocorePass(grammar: *Grammar) !void {
+fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe) !void {
     // Isocores holds all the states that are being built
     var isocores = ArrayList(IsocorePairSet).init(grammar.allocator);
     // Cleanup of self and its containing items
@@ -320,7 +321,7 @@ fn isocorePass(grammar: *Grammar) !void {
     }
 
     // Transitions holds the shift and goto transitions between isocore states
-    var transitions = ArrayList([]u32).init(grammar.allocator);
+    var transitions = ArrayList([]i32).init(grammar.allocator);
     // Cleanup of self and its containing items
     defer {
         var it = transitions.iterator();
@@ -346,11 +347,11 @@ fn isocorePass(grammar: *Grammar) !void {
     // Initialize transitions for initial isocore
     {
         // Allocate room for all terminals and non-terminals
-        const slice = try grammar.allocator.alloc(u32, grammar.names_index_map.size());
+        const slice = try grammar.allocator.alloc(i32, grammar.names_index_map.size());
         errdefer grammar.allocator.free(slice);
 
         // It is impossible to transition into the initial isocore state
-        std.mem.set(u32, slice, 0);
+        std.mem.set(i32, slice, 0);
 
         // Append it to the transitions list
         try transitions.append(slice);
@@ -464,7 +465,7 @@ fn isocorePass(grammar: *Grammar) !void {
                     }
 
                     // Update transition table
-                    transition[transition_symbol] = @intCast(u32, iit);
+                    transition[transition_symbol] = @intCast(i32, iit);
                     // No new isocore to add so continue in outer loop
                     continue :outer;
                 }
@@ -481,7 +482,7 @@ fn isocorePass(grammar: *Grammar) !void {
                     }
 
                     // Update transition table (reference not invalidated yet)
-                    transition[transition_symbol] = @intCast(u32, isocores.len);
+                    transition[transition_symbol] = @intCast(i32, isocores.len);
 
                     // Append to the isocores set
                     try isocores.append(new_isocore_set);
@@ -490,27 +491,98 @@ fn isocorePass(grammar: *Grammar) !void {
                 // Initialize transitions for new isocore
                 {
                     // Allocate room for all terminals and non-terminals
-                    const slice = try grammar.allocator.alloc(u32, grammar.names_index_map.size());
+                    const slice = try grammar.allocator.alloc(i32, grammar.names_index_map.size());
                     errdefer grammar.allocator.free(slice);
 
                     // It is impossible to transition into the initial isocore state
-                    std.mem.set(u32, slice, 0);
+                    std.mem.set(i32, slice, 0);
 
                     // Append it to the transitions list
                     try transitions.append(slice);
                 }
             }
         }
+    }
 
-        // Debug
+    // TODO: compute reduce transitions
+
+    // Follows are used to compute the reduce transitions
+    var follows = ArrayList(FollowSet).init(grammar.allocator);
+    // Cleanup of self and its containing items
+    defer {
+        var it = follows.iterator();
+        while(it.next()) |*follow| {
+            follow.deinit();
+        }
+        follows.deinit();
+    }
+
+    // Initialize all the follow sets
+    {
+        var fi: usize = 0;
+        while(fi < transitions.len) : (fi += 1) {
+            try follows.append(FollowSet.init(grammar.allocator));
+        }
+    }
+
+    // Compute direct follows
+    current_isocore = 0;
+    while(current_isocore < isocores.len) : (current_isocore += 1) {
+        const isocore = isocores.at(current_isocore);
+        const transition = transitions.at(current_isocore);
+
+        // Loop through all the goto transitions
+        var igt: usize = 0;
+        while(igt < grammar.epsilon_index) : (igt += 1) {
+            const ugt = @intCast(u32, transition[igt]);
+            const uigt = @intCast(u32, igt);
+
+            if(ugt == 0) continue;
+
+            // Find all the shift transitions associated with the goto
+            for(transition[grammar.epsilon_index..]) |st| {
+                const ust = @intCast(usize, st);
+            }
+        }
+    }
+
+    // Debug
+    current_isocore = 0;
+    while(current_isocore < isocores.len) : (current_isocore += 1) {
         warn("Isocore {}:\n------------\n", current_isocore);
         {
-            var pit = expansion_core.iterator();
+            var pit = isocores.at(current_isocore).iterator();
             while(pit.next()) |kv| {
                 const pair = kv.key;
                 grammar.productions.at(pair.production_id).debugWithDot(grammar, pair.symbol_index);
             }
         }
         warn("\n");
+        var has_transitions: bool = false;
+        for(transitions.at(current_isocore)) |t,i| {
+            if(t == 0) continue;
+
+            has_transitions = true;
+            if(grammar.isTerminal(i)) {
+                warn("[{}]g{}, ", i, t);
+            }
+            else if(t > 0) {
+                warn("[{}]s{}, ", i, t);
+            }
+            else {
+                warn("[{}]r{}, ", i, -t);
+            }
+        }
+        if(has_transitions)
+            warn("\n\n");
+
+        var has_follows: bool = false;
+        var fit = follows.at(current_isocore).iterator();
+        while(fit.next()) |follow| {
+            warn("<{}>, ", follow);
+            has_follows = true;
+        }
+        if(has_follows)
+            warn("\n\n");
     }
 }
