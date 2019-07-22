@@ -171,8 +171,17 @@ pub const Grammar = struct {
         const terminal_nullability = try nullabilityPass(self);
         defer self.allocator.free(terminal_nullability);
 
+        // Calculate the first and follow sets
+        const follow_sets = try followSetPass(self, terminal_nullability);
+        defer {
+            for(follow_sets) |*follow_set| {
+                follow_set.deinit();
+            }
+            self.allocator.free(follow_sets);
+        }
+
         // Build the isocore set
-        try isocorePass(self, terminal_nullability);
+        try isocorePass(self, terminal_nullability, follow_sets);
     }
 
     pub fn terminalCount(self: Self) usize {
@@ -283,6 +292,306 @@ fn nullabilityPass(grammar: *Grammar) ![]YesNoMaybe {
     return terminal_nullability;
 }
 
+fn hashInt32(v: i32) u32 {
+    return std.hash.Murmur3_32.hashUint32(@bitCast(u32, v));
+}
+
+const FirstFollowSet = FlatHash.Set(i32, null, hashInt32, null);
+const TerminalChainSet = FirstFollowSet;
+
+fn followSetPass(grammar:  *Grammar, terminal_nullability: []YesNoMaybe) ![]FirstFollowSet {
+    // Allocate temporary memory for performing the calculation
+    var first_sets = try grammar.allocator.alloc(FirstFollowSet, grammar.terminalCount());
+    // Cleanup of self and its containing items
+    defer {
+        for(first_sets) |*first_set| {
+            first_set.deinit();
+        }
+        grammar.allocator.free(first_sets);
+    }
+
+    // Initialize all the sets
+    for(first_sets) |*first_set| {
+        first_set.* = FirstFollowSet.init(grammar.allocator);
+    }
+
+    // Allocate temporary memory for performing the calculation
+    var follow_sets = try grammar.allocator.alloc(FirstFollowSet, grammar.terminalCount());
+    // Cleanup of self and its containing items
+    errdefer {
+        for(follow_sets) |*follow_set| {
+            follow_set.deinit();
+        }
+        grammar.allocator.free(follow_sets);
+    }
+
+    // Initialize all the sets
+    for(follow_sets) |*follow_set| {
+        follow_set.* = FirstFollowSet.init(grammar.allocator);
+    }
+
+    // Allocate temporary memory for performing the calculation
+    var terminal_chains = try grammar.allocator.alloc(TerminalChainSet, grammar.terminalCount());
+    // Cleanup of self and its containing items
+    defer {
+        for(terminal_chains) |*terminal_chain| {
+            terminal_chain.deinit();
+        }
+        grammar.allocator.free(terminal_chains);
+    }
+
+    // Initialize all the sets
+    for(terminal_chains) |*terminal_chain| {
+        terminal_chain.* = TerminalChainSet.init(grammar.allocator);
+    }
+
+    // Initialize first sets for all productions
+    var pit = grammar.productions.iterator();
+    while(pit.next()) |production| {
+        // Reference to first set associated with current production
+        const first_set = &first_sets[production.terminal_id];
+        // Grab the first symbol, and if it is nullable, next symbol must also be considered
+        for(production.symbol_ids) |symbol_id| {
+            // Insert if not epsilon
+            if(symbol_id != grammar.epsilon_index) {
+                _ = try first_set.insert(@intCast(i32, symbol_id));
+            }
+            // Check nullability property
+            if(grammar.isTerminal(symbol_id) and terminal_nullability[symbol_id] == .Yes)
+                continue;
+            // Default is to grab only first symbol
+            break;
+        }
+        // Iterate once more to deal with terminal chains
+        var i: usize = 0;
+        while(i < production.symbol_ids.len) : (i += 1) {
+            const symbol_id = production.symbol_ids[i];
+
+            // If a production ends in a terminal that becomes a recursive chain
+            if(i+1 == production.symbol_ids.len) {
+                if(grammar.isTerminal(symbol_id)) {
+                    _ = try terminal_chains[symbol_id].insert(-@intCast(i32, production.terminal_id));
+                }
+                break;
+            }
+
+            const next_symbol_id = production.symbol_ids[i+1];
+
+            // Record the terminal chain
+            if(grammar.isTerminal(symbol_id) and grammar.isTerminal(next_symbol_id)) {
+                _ = try terminal_chains[symbol_id].insert(@intCast(i32, next_symbol_id));
+            }
+
+            // Extend first set of nullable terminals with immediate successor non-terminal
+            if(grammar.isTerminal(symbol_id) and terminal_nullability[symbol_id] == .Yes and !grammar.isTerminal(next_symbol_id)) {
+                _ = try first_sets[symbol_id].insert(@intCast(i32, next_symbol_id));
+            }
+        }
+    }
+
+    // Converge the terminal chains
+    while(true) {
+        var has_changed: bool = false;
+
+        var current_terminal: usize = 0;
+        while(current_terminal < terminal_chains.len) : (current_terminal += 1) {
+            const terminal_chain = &terminal_chains[current_terminal];
+            invalidated: while(true) {
+                var it = terminal_chain.iterator();
+                while(it.next()) |kv| {
+                    // Negative key means it terminated a production of a terminal
+                    if(kv.key < 0) {
+                        const target_terminal: usize = @bitCast(u32, -kv.key);
+                        const target_chain = &terminal_chains[target_terminal];
+                        if(current_terminal == target_terminal)
+                            continue;
+
+                        // Propagate terminal chains
+                        var tit = target_chain.iterator();
+                        while(tit.next()) |tkv| {
+                            if(tkv.key >= 0) {
+                                const result = try terminal_chain.insert(tkv.key);
+                                if(result.is_new) {
+                                    has_changed = true;
+                                    continue :invalidated;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        // Propagate terminal chains through nullability
+                        const target_terminal: usize = @bitCast(u32, kv.key);
+                        if(terminal_nullability[target_terminal] == .Yes) {
+                            const target_chain = &terminal_chains[target_terminal];
+                            if(current_terminal == target_terminal)
+                                continue;
+
+                            var tit = target_chain.iterator();
+                            while(tit.next()) |tkv| {
+                                const result = try terminal_chain.insert(tkv.key);
+                                if(result.is_new) {
+                                    has_changed = true;
+                                    continue :invalidated;
+                                }
+                            }
+                        }
+                    }
+                }
+                break :invalidated;
+            }
+        }
+
+        if(!has_changed)
+            break;
+    }
+
+    // Converge the first sets
+    while(true) {
+        var has_changed: bool = false;
+
+        for(first_sets) |*first_set| {
+            // Invalidation of iterator may occur because the current set is being expanded
+            invalidated: while(true) {
+                var it = first_set.iterator();
+                while(it.next()) |kv| {
+                    const ukey = @bitCast(u32, kv.key);
+                    if(grammar.isTerminal(ukey)) {
+                        var is_invalidated: bool = false;
+                        var fit = first_sets[ukey].iterator();
+                        while(fit.next()) |fkv| {
+                            const ufkey = @bitCast(u32, fkv.key);
+                            if(!grammar.isTerminal(ufkey) and ufkey != grammar.epsilon_index) {
+                                const result = try first_set.insert(fkv.key);
+                                if(result.is_new)
+                                    is_invalidated = true;
+                            }
+                        }
+                        if(is_invalidated) {
+                            has_changed = true;
+                            continue :invalidated;
+                        }
+                    }
+                }
+
+                break :invalidated;
+            }
+        }
+
+        if(!has_changed)
+            break;
+    }
+
+    // Expand nullable terminals in first sets
+    while(true) {
+        var has_changed: bool = false;
+
+        var current_first_set: usize = 0;
+        while(current_first_set < first_sets.len) : (current_first_set += 1) {
+            if(terminal_nullability[current_first_set] != .Yes)
+                continue;
+
+            const first_set = &first_sets[current_first_set];
+            var it = terminal_chains[current_first_set].iterator();
+            while(it.next()) |kv| {
+                const key = @bitCast(u32, kv.key);
+
+                if(kv.key < 0 or key == current_first_set)
+                    continue;
+
+                var fit = first_sets[key].iterator();
+                while(fit.next()) |fkv| {
+                    const result = try first_set.insert(fkv.key);
+                    has_changed = has_changed or result.is_new;
+                }
+            }
+        }
+
+        if(!has_changed)
+            break;
+    }
+
+    // Build follow sets
+    pit = grammar.productions.iterator();
+    while(pit.next()) |production| {
+        var current_symbol: usize = 0;
+        while(current_symbol+1 < production.symbol_ids.len) : (current_symbol += 1) {
+            const symbol_id = production.symbol_ids[current_symbol];
+            const next_symbol_id = production.symbol_ids[current_symbol+1];
+
+            if(grammar.isTerminal(symbol_id) and !grammar.isTerminal(next_symbol_id)) {
+                _ = try follow_sets[symbol_id].insert(@intCast(i32, next_symbol_id));
+            }
+            else if(grammar.isTerminal(symbol_id) and grammar.isTerminal(next_symbol_id)) {
+                var fit = first_sets[next_symbol_id].iterator();
+                while(fit.next()) |fkv| {
+                    const fkey = @bitCast(u32, fkv.key);
+
+                    if(!grammar.isTerminal(fkey))
+                        _ = try follow_sets[symbol_id].insert(fkv.key);
+                }
+            }
+        }
+    }
+
+    // Expand follow sets with terminal chains
+    for(terminal_chains) |terminal_chain,current_terminal| {
+        var it = terminal_chain.iterator();
+        while(it.next()) |kv| {
+            if(kv.key < 0) {
+                const follow_set = &follow_sets[current_terminal];
+                var fit = first_sets[@bitCast(u32, -kv.key)].iterator();
+                while(fit.next()) |fkv| {
+                    if(!grammar.isTerminal(@bitCast(u32, fkv.key)))
+                        _ = try follow_set.insert(fkv.key);
+                }
+            }
+            else {
+                const follow_set = &follow_sets[current_terminal];
+                var fit = first_sets[@bitCast(u32, kv.key)].iterator();
+                while(fit.next()) |fkv| {
+                    if(!grammar.isTerminal(@bitCast(u32, fkv.key)))
+                        _ = try follow_set.insert(fkv.key);
+                }
+            }
+        }
+    }
+
+    // for(terminal_chains) |terminal_chain,i| {
+    //     warn("Terminal chain ([{}]{}):", i, grammar.names_index_map.keyOf(i));
+    //     var it = terminal_chain.iterator();
+    //     while(it.next()) |kv| {
+    //         if(kv.key < 0) {
+    //             // warn(" [{}]{},", kv.key, grammar.names_index_map.keyOf(@bitCast(u32, -kv.key)));
+    //         }
+    //         else {
+    //             warn(" [{}]{},", kv.key, grammar.names_index_map.keyOf(@bitCast(u32, kv.key)));
+    //         }
+    //     }
+    //     warn("\n");
+    // }
+
+    // for(first_sets) |first_set,i| {
+    //     warn("First set ({}):", grammar.names_index_map.keyOf(i));
+    //     var it = first_set.iterator();
+    //     while(it.next()) |kv| {
+    //         if(!grammar.isTerminal(@bitCast(u32, kv.key)))
+    //             warn(" [{}]{},", kv.key, grammar.names_index_map.keyOf(@bitCast(u32, kv.key)));
+    //     }
+    //     warn("\n");
+    // }
+
+    // for(follow_sets) |follow_set,i| {
+    //     warn("Follow set ({}):", grammar.names_index_map.keyOf(i));
+    //     var it = follow_set.iterator();
+    //     while(it.next()) |kv| {
+    //        warn(" [{}]{},", kv.key, grammar.names_index_map.keyOf(@bitCast(u32, kv.key)));
+    //     }
+    //     warn("\n");
+    // }
+
+    return follow_sets;
+}
+
 const IsocorePair = struct {
     production_id: u32,
     symbol_index: u32,
@@ -306,9 +615,8 @@ const IsocorePair = struct {
 };
 
 const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
-const FollowSet = FlatHash.Set(u32, null, std.hash.Murmur3_32.hashUint32, null);
 
-fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe) !void {
+fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet) !void {
     // Isocores holds all the states that are being built
     var isocores = ArrayList(IsocorePairSet).init(grammar.allocator);
     // Cleanup of self and its containing items
@@ -504,85 +812,34 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe) !void {
         }
     }
 
-    // TODO: compute reduce transitions
+    // // Debug
+    // current_isocore = 0;
+    // while(current_isocore < isocores.len) : (current_isocore += 1) {
+    //     warn("Isocore {}:\n------------\n", current_isocore);
+    //     {
+    //         var pit = isocores.at(current_isocore).iterator();
+    //         while(pit.next()) |kv| {
+    //             const pair = kv.key;
+    //             grammar.productions.at(pair.production_id).debugWithDot(grammar, pair.symbol_index);
+    //         }
+    //     }
+    //     warn("\n");
+    //     var has_transitions: bool = false;
+    //     for(transitions.at(current_isocore)) |t,i| {
+    //         if(t == 0) continue;
 
-    // Follows are used to compute the reduce transitions
-    var follows = ArrayList(FollowSet).init(grammar.allocator);
-    // Cleanup of self and its containing items
-    defer {
-        var it = follows.iterator();
-        while(it.next()) |*follow| {
-            follow.deinit();
-        }
-        follows.deinit();
-    }
-
-    // Initialize all the follow sets
-    {
-        var fi: usize = 0;
-        while(fi < transitions.len) : (fi += 1) {
-            try follows.append(FollowSet.init(grammar.allocator));
-        }
-    }
-
-    // Compute direct follows
-    current_isocore = 0;
-    while(current_isocore < isocores.len) : (current_isocore += 1) {
-        const isocore = isocores.at(current_isocore);
-        const transition = transitions.at(current_isocore);
-
-        // Loop through all the goto transitions
-        var igt: usize = 0;
-        while(igt < grammar.epsilon_index) : (igt += 1) {
-            const ugt = @intCast(u32, transition[igt]);
-            const uigt = @intCast(u32, igt);
-
-            if(ugt == 0) continue;
-
-            // Find all the shift transitions associated with the goto
-            for(transition[grammar.epsilon_index..]) |st| {
-                const ust = @intCast(usize, st);
-            }
-        }
-    }
-
-    // Debug
-    current_isocore = 0;
-    while(current_isocore < isocores.len) : (current_isocore += 1) {
-        warn("Isocore {}:\n------------\n", current_isocore);
-        {
-            var pit = isocores.at(current_isocore).iterator();
-            while(pit.next()) |kv| {
-                const pair = kv.key;
-                grammar.productions.at(pair.production_id).debugWithDot(grammar, pair.symbol_index);
-            }
-        }
-        warn("\n");
-        var has_transitions: bool = false;
-        for(transitions.at(current_isocore)) |t,i| {
-            if(t == 0) continue;
-
-            has_transitions = true;
-            if(grammar.isTerminal(i)) {
-                warn("[{}]g{}, ", i, t);
-            }
-            else if(t > 0) {
-                warn("[{}]s{}, ", i, t);
-            }
-            else {
-                warn("[{}]r{}, ", i, -t);
-            }
-        }
-        if(has_transitions)
-            warn("\n\n");
-
-        var has_follows: bool = false;
-        var fit = follows.at(current_isocore).iterator();
-        while(fit.next()) |follow| {
-            warn("<{}>, ", follow);
-            has_follows = true;
-        }
-        if(has_follows)
-            warn("\n\n");
-    }
+    //         has_transitions = true;
+    //         if(grammar.isTerminal(i)) {
+    //             warn("[{}]g{}, ", i, t);
+    //         }
+    //         else if(t > 0) {
+    //             warn("[{}]s{}, ", i, t);
+    //         }
+    //         else {
+    //             warn("[{}]r{}, ", i, -t);
+    //         }
+    //     }
+    //     if(has_transitions)
+    //         warn("\n\n");
+    // }
 }

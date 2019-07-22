@@ -104,10 +104,6 @@ pub extern "LALR" const Grammar = struct {
 
     fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
 
-    fn MaybeStringLiteral() ?*Token {}
-
-    fn MaybeStringLiteral(StringLiteral: *Token) ?*Token {}
-
     fn MaybeIdentifier() ?*Token {}
 
     fn MaybeIdentifier(Identifier: *Token) ?*Token {}
@@ -168,13 +164,13 @@ pub extern "LALR" const Grammar = struct {
 
     fn MaybeBreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
 
-    fn FnProto(MaybeFnProtoModifier: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, ParamDeclList: *Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
+    fn FnProto(MaybeFnProtoModifier: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, ParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
 
-    fn FnProto(MaybeFnProtoModifier: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, ParamDeclList: *Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
+    fn FnProto(MaybeFnProtoModifier: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, ParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
 
-    fn ParamDeclList(LParen: *Token, RParen: *Token) *Node {}
+    fn ParamDeclList() ?*Node {}
 
-    fn ParamDeclList(LParen: *Token, ParamDecls: *node, RParen: *Token) *Node {}
+    fn ParamDeclList(ParamDecls: *node) ?*Node {}
 
     fn ParamDecls(ParamDecl: *Node) *Node {}
 
@@ -182,7 +178,7 @@ pub extern "LALR" const Grammar = struct {
 
     fn ParamDecl(MaybeNoaliasComptime: ?*Token, ParamType: *node) *Node {}
 
-    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifer: *Token, Colon: *Token, ParamType: *node) *Node {}
+    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifer: *Token, Colon: *Token, ParamType: *Node) *Node {}
 
     fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
 
