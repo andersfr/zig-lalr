@@ -48,7 +48,7 @@ pub const Production = struct {
         self.symbols.deinit();
     }
 
-    pub fn append(self: *Self, symbol: []const u8) !void {
+    pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8) !void {
         try self.symbols.append(symbol);
     }
 
@@ -56,7 +56,7 @@ pub const Production = struct {
         // Check if production is nullable
         if(self.symbols.len == 0) {
             // Traditionally represented in litterature as the greek Epsilon
-            try self.append("$epsilon");
+            try self.append("$epsilon", null);
             self.nullable = .Yes;
 
         }
@@ -204,8 +204,8 @@ pub const Grammar = struct {
         errdefer production.deinit();
 
         // Build the production
-        try production.append(name);
-        try production.append("$eof");
+        try production.append(name, null);
+        try production.append("$eof", null);
         try production.finalize();
 
         // Append it to the grammar
@@ -222,6 +222,27 @@ pub const Grammar = struct {
 
     fn isSpecial(self: Self, index: usize) bool {
         return self.names_index_map.keyOf(index)[0] == '$';
+    }
+
+    pub fn getTerminalNullProduction(self: Self, symbol: usize) usize {
+        // Check for symbol <- $epsilon
+        var null_production_id: usize = 0;
+        while(null_production_id < self.productions.len) : (null_production_id += 1) {
+            const null_production = self.productions.items[null_production_id];
+            if(null_production.terminal_id == symbol and null_production.symbol_ids[0] == self.epsilon_index) {
+                return null_production_id;
+            }
+        }
+        // Check for symbol <- S, where S is nullable
+        null_production_id = 0;
+        while(null_production_id < self.productions.len) : (null_production_id += 1) {
+            const null_production = self.productions.items[null_production_id];
+            const null_symbol_id = null_production.symbol_ids[0];
+            if(null_production.terminal_id == symbol and null_symbol_id != symbol and self.isTerminal(null_symbol_id) and null_production.nullable == .Yes) {
+                return self.getTerminalNullProduction(null_symbol_id);
+            }
+        }
+        return 0;
     }
 };
 
@@ -534,26 +555,32 @@ fn followSetPass(grammar:  *Grammar, terminal_nullability: []YesNoMaybe) ![]Firs
     }
 
     // Expand follow sets with terminal chains
-    for(terminal_chains) |terminal_chain,current_terminal| {
-        var it = terminal_chain.iterator();
-        while(it.next()) |kv| {
-            if(kv.key < 0) {
-                const follow_set = &follow_sets[current_terminal];
-                var fit = first_sets[@bitCast(u32, -kv.key)].iterator();
-                while(fit.next()) |fkv| {
-                    if(!grammar.isTerminal(@bitCast(u32, fkv.key)))
-                        _ = try follow_set.insert(fkv.key);
+    while(true) {
+        var changed: bool = false;
+        for(terminal_chains) |terminal_chain,current_terminal| {
+            var it = terminal_chain.iterator();
+            while(it.next()) |kv| {
+                if(kv.key < 0) {
+                    const follow_set = &follow_sets[current_terminal];
+                    var fit = follow_sets[@bitCast(u32, -kv.key)].iterator();
+                    while(fit.next()) |fkv| {
+                        const result = try follow_set.insert(fkv.key);
+                        changed = changed or result.is_new;
+                    }
                 }
-            }
-            else {
-                const follow_set = &follow_sets[current_terminal];
-                var fit = first_sets[@bitCast(u32, kv.key)].iterator();
-                while(fit.next()) |fkv| {
-                    if(!grammar.isTerminal(@bitCast(u32, fkv.key)))
-                        _ = try follow_set.insert(fkv.key);
+                else {
+                    const follow_set = &follow_sets[current_terminal];
+                    var fit = first_sets[@bitCast(u32, kv.key)].iterator();
+                    while(fit.next()) |fkv| {
+                        if(!grammar.isTerminal(@bitCast(u32, fkv.key))) {
+                            const result = try follow_set.insert(fkv.key);
+                            changed = changed or result.is_new;
+                        }
+                    }
                 }
             }
         }
+        if(!changed) break;
     }
 
     // for(terminal_chains) |terminal_chain,i| {
@@ -617,6 +644,10 @@ const IsocorePair = struct {
 const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
 
 fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet) !void {
+    // Counters for conflict types
+    var shift_reduce_conflicts: usize = 0;
+    var reduce_reduce_conflicts: usize = 0;
+
     // Isocores holds all the states that are being built
     var isocores = ArrayList(IsocorePairSet).init(grammar.allocator);
     // Cleanup of self and its containing items
@@ -809,7 +840,125 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     try transitions.append(slice);
                 }
             }
+
+           // warn("Expansion core {}:\n------------\n", current_isocore);
+           // {
+           //     var tcit = expansion_core.iterator();
+           //     while(tcit.next()) |tckv| {
+           //         const tcpair = tckv.key;
+           //         warn("{} ", tcpair.production_id);
+           //         grammar.productions.at(tcpair.production_id).debugWithDot(grammar, tcpair.symbol_index);
+           //     }
+           // }
         }
+    }
+
+    current_isocore = 0;
+    while(current_isocore < isocores.len) : (current_isocore += 1) {
+        warn("Isocore {}:\n------------\n", current_isocore);
+        {
+            var pit = isocores.at(current_isocore).iterator();
+            while(pit.next()) |kv| {
+                const pair = kv.key;
+                warn("{} ", pair.production_id);
+                grammar.productions.at(pair.production_id).debugWithDot(grammar, pair.symbol_index);
+            }
+        }
+        warn("\n");
+        var has_conflicts: bool = false;
+        var iit = isocores.items[current_isocore].iterator();
+        while(iit.next()) |kv| {
+            const pair = kv.key;
+            const production = grammar.productions.items[pair.production_id];
+            const transition = transitions.at(current_isocore);
+
+            if(pair.symbol_index == production.symbol_ids.len) {
+                var fit = follow_sets[production.terminal_id].iterator();
+                while(fit.next()) |fkv| {
+                    const key = @bitCast(u32, fkv.key);
+                    if(grammar.isTerminal(key))
+                        continue;
+                    if(transition[key] == 0) {
+                        transition[key] = -@intCast(i32, pair.production_id);
+                    }
+                    else if(transition[key] > 0) {
+                        warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                        shift_reduce_conflicts += 1;
+                        has_conflicts = true;
+                    }
+                    else {
+                        const tkey = @bitCast(u32, -transition[key]); 
+                        if(tkey != pair.production_id) {
+                            // Take precedence over a nullable production to resolve conflict
+                            if(grammar.productions.items[tkey].symbol_ids[0] == grammar.epsilon_index) {
+                                transition[key] = -@intCast(i32, pair.production_id);
+                            }
+                            else {
+                                warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                reduce_reduce_conflicts += 1;
+                                has_conflicts = true;
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                const symbol = production.symbol_ids[pair.symbol_index];
+                if(grammar.isTerminal(symbol) and terminal_nullability[symbol] == .Yes) {
+                    const null_production_id = grammar.getTerminalNullProduction(symbol);
+                    if(null_production_id != 0) {
+                        const null_production = grammar.productions.items[null_production_id];
+                        var fit = follow_sets[null_production.terminal_id].iterator();
+                        while(fit.next()) |fkv| {
+                            const key = @bitCast(u32, fkv.key);
+                            if(grammar.isTerminal(key))
+                                continue;
+                            if(transition[key] == 0) {
+                                transition[key] = -@intCast(i32, null_production_id);
+                            }
+                            else if(transition[key] > 0) {
+                                // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
+                            }
+                            else {
+                                if(transition[key] != -@intCast(i32, null_production_id)) {
+                                    if(terminal_nullability[@bitCast(u32, -transition[key])] == .Yes) {
+                                        warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
+                                        reduce_reduce_conflicts += 1;
+                                        has_conflicts = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if(has_conflicts)
+            warn("\n");
+
+        var has_transitions: bool = false;
+        for(transitions.at(current_isocore)) |t,i| {
+            if(t == 0) continue;
+
+            has_transitions = true;
+            if(grammar.isTerminal(i)) {
+                warn("[{}]g{}, ", i, t);
+            }
+            else if(t > 0) {
+                warn("[{}]s{}, ", i, t);
+            }
+            else {
+                warn("[{}]r{}, ", i, -t);
+            }
+        }
+        if(has_transitions)
+            warn("\n\n");
+    }
+
+    if(shift_reduce_conflicts + reduce_reduce_conflicts > 0) {
+        warn("Shift-Reduce conflicts: {}\n", shift_reduce_conflicts);
+        warn("Reduce-Reduce conflicts: {}\n", reduce_reduce_conflicts);
+        warn("\n");
     }
 
     // // Debug
