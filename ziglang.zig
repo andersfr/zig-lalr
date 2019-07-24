@@ -180,6 +180,9 @@ pub extern "LALR" const ZigGrammar = struct {
     // Expressions
     fn AssignExpr(LExpr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
 
+    fn LExpr(Identifier: *Token) *Node {}
+    fn LExpr(Identifier: *Token, SuffixOps: *Node) *Node {}
+
     fn Exprs(Expr: *Node) *Node {}
     fn Exprs(Exprs: *Node, Comma: *Token, Expr: *Node) *Node {}
 
@@ -250,9 +253,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrimaryTypeExpr(FloatLiteral: *Token) *Node {}
     fn PrimaryTypeExpr(FnProto: *Node) *Node {}
     fn PrimaryTypeExpr(GroupedExpr: *Node) *Node {}
-    fn PrimaryTypeExpr(LabeledTypeExpr: *Node) *Node {}
     fn PrimaryTypeExpr(Identifier: *Token) *Node {}
-    fn PrimaryTypeExpr(IfTypeExpr: *Node) *Node {}
     fn PrimaryTypeExpr(IntegerLiteral: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_anyerror: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
@@ -272,7 +273,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn ErrorSetDecl(Keyword_error: *Token, LBrace: *Token, Identifiers: *Node, MaybeComma: ?*Token, RBrace: *Token) *Node {}
 
     fn Identifiers(Identifier: *Token) *Node {}
-    fn Identifiers(Identifiers: *Node, Comma: *Token, Identifier: *Node) *Node {}
+    fn Identifiers(Identifiers: *Node, Comma: *Token, Identifier: *Token) *Node {}
 
     // Initializer list
     fn InitList(LBrace: *Token, RBrace: *Token) *Node {}
@@ -334,6 +335,52 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrefixOp(Ampersand: *Token) *Token {}
     fn PrefixOp(Keyword_try: *Token) *Token {}
     fn PrefixOp(Keyword_await: *Token) *Token {}
+
+    // Assembly
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, RParen: *Token) *Node {}
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, AsmOuput: *Node, RParen: *Token) *Node {}
+
+    fn AsmOutput(Colon: *Token, AsmOutputItems: *Node) *Node {}
+    fn AsmOutput(Colon: *Token, AsmOutputItems: *Node, AsmInput: *Node) *Node {}
+    fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {}
+
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {}
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+
+    fn AsmOutputItems(AsmOutputItem: *Node) *Node {}
+    fn AsmOutputItems(AsmOutputItems: *Node, Comma: *Token, AsmOutputItem: *Node) *Node {}
+
+    fn AsmInput(Colon: *Token, AsmInputItems: *Node) *Node {}
+    fn AsmInput(Colon: *Token, AsmInputItems: *Node, AsmClobber: *Node) *Node {}
+    fn AsmInput(Colon: *Token, AsmClobber: *Node) *Node {}
+
+    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+
+    fn AsmInputItems(AsmInputItem: *Node) *Node {}
+    fn AsmInputItems(AsmInputItems: *Node, Comma: *Token, AsmInputItem: *Node) *Node {}
+
+    fn AsmClobber(Colon: *Token) *Node {}
+    fn AsmClobber(Colon: *Token, Strings: *Node) *Node {}
+
+    fn Strings(StringLiteral: *Token) *Node {}
+    fn Strings(Strings: *Node, Comma: *Token, StringLiteral: *Token) *Node {}
+
+    // Switch
+    fn Switch(Keyword_switch: *Token, LParen: *Token, Expr: *Node, RParen: *Token, LBrace: *Token, SwitchProngs: *Node, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+
+    fn SwitchProngs(SwitchProng: *Node) *Node {}
+    fn SwitchProngs(SwitchProngs: *Node, Comma: *Token, SwitchProng: *Node) *Node {}
+
+    fn SwitchProng(SwitchCase: *Node, EqualAngleBracketRight: *Token, MaybePtrPayload: ?*Node, Expr: *Node) *Node {}
+
+    fn SwitchCase(Keyword_else: *Token) *Node {}
+    fn SwitchCase(SwitchItems: *Node, MaybeComma: ?*Token) *Node {}
+
+    fn SwitchItems(SwitchItem: *Node) *Node {}
+    fn SwitchItems(SwitchItems: *Node, Comma: *Token, SwitchItem: *Node) *Node {}
+
+    fn SwitchItem(Expr: *Node) *Node {}
+    fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {}
 
     // Maybe helpers
     fn MaybePub() ?*Token {}

@@ -148,7 +148,7 @@ pub fn main() !void {
                             const grammar_name = tree.tokens.at(vardecl.name_token);
                             var grammar = try parseGrammar(buffer[grammar_name.start..grammar_name.end], tree, buffer, container);
                             defer grammar.deinit();
-                            // grammar.debug();
+                            grammar.debug();
                         }
                     }
                 }
