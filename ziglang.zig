@@ -177,7 +177,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
 
     // Expressions
-    fn AssignExpr(LExpr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(LExpr: *Node, AssignOp: *Token, RExpr: *Node) *Node {}
     fn AssignExpr(SExpr: *Node) *Node {}
 
     fn LExpr(Identifier: *Token) *Node {}
@@ -194,15 +194,35 @@ pub extern "LALR" const ZigGrammar = struct {
     fn SExprTail(FnCallArguments: *Node) *Node {}
     fn SExprTail(SuffixOps: *Node, FnCallArguments: *Node) *Node {}
 
+    fn RExpr(Expr: *Node) *Node {}
+    fn RExpr(Keyword_overload: *Token, LBrace: *Token, Exprs: *Node, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+
     fn Exprs(Expr: *Node) *Node {}
     fn Exprs(Exprs: *Node, Comma: *Token, Expr: *Node) *Node {}
 
-    fn Expr(PrefixExpr: *Node) *Node {}
-    fn Expr(Expr: *Node, CompareOp: *Token, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, BitwiseOp: *Token, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, BitshiftOp: *Token, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, AdditionOp: *Token, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, MultiplyOp: *Token, Expr: *Node) *Node {}
+    fn Expr(BoolOrExpr: *Node) *Node {}
+
+    fn BoolOrExpr(BoolAndExpr: *Node) *Node {}
+    fn BoolOrExpr(BoolOrExpr: *Node, Keyword_or: *Token, BoolAndExpr: *Node) *Node {}
+    
+    fn BoolAndExpr(BoolCompareExpr: *Node) *Node {}
+    fn BoolAndExpr(BoolAndExpr: *Node, Keyword_and: *Token, BoolCompareExpr: *Node) *Node {}
+
+    fn BoolCompareExpr(BitwiseExpr: *Node) *Node {}
+    fn BoolCompareExpr(BoolCompareExpr: *Node, CompareOp: *Token, BitwiseExpr: *Node) *Node {}
+
+    fn BitwiseExpr(BitShiftExpr: *Node) *Node {}
+    fn BitwiseExpr(BitwiseExpr: *Node, BitwiseOp: *Token, BitShiftExpr: *Node) *Node {}
+    fn BitwiseExpr(BitwiseExpr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, BitShiftExpr: *Node) *Node {}
+
+    fn BitShiftExpr(AdditionExpr: *Node) *Node {}
+    fn BitShiftExpr(BitShiftExpr: *Node, BitShiftOp: *Token, AdditionExpr: *Node) *Node {}
+
+    fn AdditionExpr(MultiplyExpr: *Node) *Node {}
+    fn AdditionExpr(AdditionExpr: *Node, AdditionOp: *Token, MultiplyExpr: *Node) *Node {}
+
+    fn MultiplyExpr(PrefixExpr: *Node) *Node {}
+    fn MultiplyExpr(MultiplyExpr: *Node, MultiplyOp: *Token, PrefixExpr: *Node) *Node {}
 
     fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
     fn IfExpr(IfPrefix: *Node, Expr: *Node, ElseExpr: *Node) *Node {}
@@ -327,7 +347,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn BitwiseOp(Ampersand: *Token) *Token {}
     fn BitwiseOp(Caret: *Token) *Token {}
     fn BitwiseOp(Keyword_orelse: *Token) *Token {}
-    fn BitwiseOp(Keyword_catch: *Token) *Token {}
+    // fn BitwiseOp(Keyword_catch: *Token) *Token {}
 
     fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token {}
     fn BitShiftOp(AngleBracketAngleBracketRight: *Token) *Token {}
@@ -407,7 +427,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {}
 
     fn MaybeEqualExpr() ?*Node {}
-    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
+    fn MaybeEqualExpr(Equal: *Token, RExpr: *Node) ?*Node {}
 
     fn MaybeBang() ?*Token {}
     fn MaybeBang(Bang: *Token) ?*Token {}

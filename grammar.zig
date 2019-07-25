@@ -882,9 +882,11 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                         transition[key] = -@intCast(i32, pair.production_id);
                     }
                     else if(transition[key] > 0) {
-                        warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                        shift_reduce_conflicts += 1;
-                        has_conflicts = true;
+                        if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
+                            warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                            shift_reduce_conflicts += 1;
+                            has_conflicts = true;
+                        }
                     }
                     else {
                         const tkey = @bitCast(u32, -transition[key]); 
@@ -937,6 +939,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
             warn("\n");
 
         var has_transitions: bool = false;
+        var default_reduce: i32 = -1;
         for(transitions.at(current_isocore)) |t,i| {
             if(t == 0) continue;
 
@@ -948,7 +951,24 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                 warn("[{}]s{}, ", i, t);
             }
             else {
-                warn("[{}]r{}, ", i, -t);
+                if(default_reduce == -1) {
+                    default_reduce = -t;
+                }
+                else if(default_reduce != -t) {
+                    default_reduce = -2;
+                }
+            }
+        }
+        if(default_reduce >= 0) {
+            warn("[*]r{}", default_reduce);
+        }
+        else {
+            for(transitions.at(current_isocore)) |t,i| {
+                if(t == 0) continue;
+
+                if(!grammar.isTerminal(i) and t <= 0) {
+                    warn("[{}]r{}, ", i, -t);
+                }
             }
         }
         if(has_transitions)
@@ -991,4 +1011,32 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
     //     if(has_transitions)
     //         warn("\n\n");
     // }
+}
+
+fn resolveShiftReducePass(grammar: *Grammar, isocore: *IsocorePairSet, production_id: usize) bool {
+    const production = grammar.productions.items[production_id];
+    var good: usize = 1;
+    var it = isocore.iterator();
+    outer: while(it.next()) |kv| {
+        if(kv.key.production_id != production_id) {
+            const sproduction = grammar.productions.items[kv.key.production_id];
+            // Resolve as greedy shift when productions are identical but match can be extended
+            if(production.terminal_id == sproduction.terminal_id) {
+                var i: usize = 0;
+                while(i < production.symbol_ids.len) : (i += 1) {
+                    if(production.symbol_ids[i] != sproduction.symbol_ids[i])
+                        break :outer;
+                }
+                good += 1;
+                continue :outer;
+            }
+            // Resolve as greedy shift when shift eventually produces itself as terminal
+            if(production.terminal_id != sproduction.terminal_id and sproduction.terminal_id == production.symbol_ids[production.symbol_ids.len-1]) {
+                good += 1;
+                continue :outer;
+            }
+            break;
+        }
+    }
+    return good == isocore.size;
 }
