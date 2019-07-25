@@ -130,7 +130,6 @@ pub extern "LALR" const ZigGrammar = struct {
     fn Statement(BlockExpr: *Node) *Node {}
     fn Statement(NestedStatement: *Node) *Node {}
 
-    fn NestedStatement(SwitchExpr: *Node) *Node {}
     fn NestedStatement(IfStatement: *Node) *Node {}
     fn NestedStatement(LoopStatement: *Node) *Node {}
     fn NestedStatement(LabeledLoopStatement: *Node) *Node {}
@@ -179,9 +178,21 @@ pub extern "LALR" const ZigGrammar = struct {
 
     // Expressions
     fn AssignExpr(LExpr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(SExpr: *Node) *Node {}
 
     fn LExpr(Identifier: *Token) *Node {}
     fn LExpr(Identifier: *Token, SuffixOps: *Node) *Node {}
+
+    fn SExpr(AsmExpr: *Node) *Node {}
+    fn SExpr(SwitchExpr: *Node) *Node {}
+    fn SExpr(SExprTails: *Node) *Node {}
+    fn SExpr(Identifier: *Token, SExprTails: *Node) *Node {}
+
+    fn SExprTails(SExprTail: *Node) *Node {}
+    fn SExprTails(SExprTails: *Node, SExprTail: *Node) *Node {}
+
+    fn SExprTail(FnCallArguments: *Node) *Node {}
+    fn SExprTail(SuffixOps: *Node, FnCallArguments: *Node) *Node {}
 
     fn Exprs(Expr: *Node) *Node {}
     fn Exprs(Exprs: *Node, Comma: *Token, Expr: *Node) *Node {}
@@ -192,6 +203,11 @@ pub extern "LALR" const ZigGrammar = struct {
     fn Expr(Expr: *Node, BitshiftOp: *Token, Expr: *Node) *Node {}
     fn Expr(Expr: *Node, AdditionOp: *Token, Expr: *Node) *Node {}
     fn Expr(Expr: *Node, MultiplyOp: *Token, Expr: *Node) *Node {}
+
+    fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
+    fn IfExpr(IfPrefix: *Node, Expr: *Node, ElseExpr: *Node) *Node {}
+
+    fn ElseExpr(Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {}
 
     fn GroupedExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
 
@@ -266,6 +282,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrimaryTypeExpr(Keyword_unreachable: *Token) *Node {}
     fn PrimaryTypeExpr(StringLiteral: *Token) *Node {}
     fn PrimaryTypeExpr(SwitchExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
 
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclAuto: *Node) *Node {}
 
