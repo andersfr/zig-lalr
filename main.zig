@@ -39,6 +39,12 @@ fn parseSymbolType(tree: *std.zig.ast.Tree, buffer: []const u8, node: *Node) !Sy
                     const ident_str = buffer[ident_name.start..ident_name.end];
                     return SymbolType{ .optional = optional, .name = ident_str };
                 }
+                else if(op.rhs.cast(Node.InfixOp)) |infix| {
+                    const ident_name_s = tree.tokens.at(infix.firstToken());
+                    const ident_name_e = tree.tokens.at(infix.lastToken());
+                    const ident_str = buffer[ident_name_s.start..ident_name_e.end];
+                    return SymbolType{ .optional = optional, .name = ident_str };
+                }
                 return error.ExpectedIdentifier;
             },
             else => {

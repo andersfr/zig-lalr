@@ -181,7 +181,14 @@ pub const Grammar = struct {
         }
 
         // Build the isocore set
-        try isocorePass(self, terminal_nullability, follow_sets);
+        const transitions = try isocorePass(self, terminal_nullability, follow_sets);
+        errdefer {
+            var it = transitions.iterator();
+            while(it.next()) |transition| {
+                grammar.allocator.free(transition);
+            }
+            transitions.deinit();
+        }
     }
 
     pub fn terminalCount(self: Self) usize {
@@ -643,7 +650,7 @@ const IsocorePair = struct {
 
 const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
 
-fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet) !void {
+fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet) !ArrayList([]i32) {
     // Counters for conflict types
     var shift_reduce_conflicts: usize = 0;
     var reduce_reduce_conflicts: usize = 0;
@@ -662,7 +669,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
     // Transitions holds the shift and goto transitions between isocore states
     var transitions = ArrayList([]i32).init(grammar.allocator);
     // Cleanup of self and its containing items
-    defer {
+    errdefer {
         var it = transitions.iterator();
         while(it.next()) |transition| {
             grammar.allocator.free(transition);
@@ -980,6 +987,8 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
         warn("Reduce-Reduce conflicts: {}\n", reduce_reduce_conflicts);
         warn("\n");
     }
+
+    return transitions;
 
     // // Debug
     // current_isocore = 0;
