@@ -89,77 +89,93 @@ pub extern "LALR" const ZigGrammar = struct {
         result = &node.base;
     }
     fn Statement(AssignStatement: *Node) *Node { result = arg1; }
-    fn Statement(BuiltinCall: *Node, Semicolon: *Token) *Node { result = arg1; }
-    fn Statement(CallChain: *Node, Semicolon: *Token) *Node { result = arg1; }
-    fn Statement(Keyword_try: *Token, CallChain: *Node, Semicolon: *Token) *Node {
+    fn Statement(OpChain: *Node, Semicolon: *Token) *Node { result = arg1; }
+    fn Statement(Keyword_try: *Token, OpChain: *Node, Semicolon: *Token) *Node {
         const node = try allocator.create(Node.Try);
         node.* = Node.Try{ .token = arg1, .rhs = arg2, };
         result = &node.base;
     }
-    fn Statement(Keyword_await: *Token, CallChain: *Node, Semicolon: *Token) *Node {
+    fn Statement(Keyword_await: *Token, OpChain: *Node, Semicolon: *Token) *Node {
         const node = try allocator.create(Node.Await);
         node.* = Node.Await{ .token = arg1, .rhs = arg2, };
         result = &node.base;
     }
 
     // Assignment
-    fn AssignStatement(LValue: *Node, AssignOp: *Token, Expr: *Node, Semicolon: *Token) *Node {
+    fn AssignStatement(OpChain: *Node.Chain, AssignOp: *Token, Expr: *Node, Semicolon: *Token) *Node {
         const node = try allocator.create(Node.Assignment);
-        node.* = Node.Assignment{ .lhs = arg1, .token = arg2, .rhs = arg3, };
-        result = &node.base;
-    }
-    fn AssignStatement(BuiltinCall: *Node, AssignOp: *Token, Expr: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Assignment);
-        node.* = Node.Assignment{ .lhs = arg1, .token = arg2, .rhs = arg3, };
+        node.* = Node.Assignment{ .lhs = &arg1.base, .token = arg2, .rhs = arg3, };
         result = &node.base;
     }
 
-    // LValue (something allowed on left side of assignment)
-    fn LValue(Identifier: *Token) *Node {
+    // OpChain
+    fn OpChain(Identifier: *Token) *Node.Chain {
         const node = try allocator.create(Node.Identifier);
         node.* = Node.Identifier{ .token = arg1, };
-        result = &node.base;
+
+        const chain = try allocator.create(Node.Chain);
+        chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
+        try chain.parts.append(node);
+        
+        result = chain;
     }
-    fn LValue(LParen: *Token, LValue: *Node, RParen: *Token) *Node { result = arg2; }
-    fn LValue(LValue: *Node, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lhs = arg1, .lbracket = arg2, .begin = arg3, .rbracket = arg4, };
-        result = &node.base;
+    fn OpChain(BuiltinCall: *Node) *Node.Chain {
+        const chain = try allocator.create(Node.Chain);
+        chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
+        try chain.parts.append(arg1);
+        
+        result = chain;
     }
-    fn LValue(LValue: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lhs = arg1, .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .rbracket = arg5, };
-        result = &node.base;
-    }
-    fn LValue(LValue: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lhs = arg1, .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .end = arg5, .rbracket = arg6, };
-        result = &node.base;
-    }
-    fn LValue(LValue: *Node, Period: *Token, Identifier: *Token) *Node {
-        const node = try allocator.create(Node.Identifier);
-        node.* = Node.Identifier{ .token = arg2, };
-        if(arg1.cast(Node.Chain)) |chain| {
-            try chain.append(node);
-            result = arg1;
-        }
-        else {
+    fn OpChain(LParen: *Token, OpChain: *Node.Chain, RParen: *Token) *Node.Chain {
+        if(arg2.parts.len > 1) {
             const chain = try allocator.create(Node.Chain);
             chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
-            try chain.identifiers.append(arg1);
-            try chain.identifiers.append(node);
+            try chain.parts.append(&arg2.base);
             result = chain;
         }
+        else {
+            return arg2;
+        }
     }
-    fn LValue(LValue: *Node, Period: *Token, QuestionMark: *Token) *Node {
+    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node.Chain {
+        const node = try allocator.create(Node.Slice);
+        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .rbracket = arg4, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
+    }
+    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node.Chain {
+        const node = try allocator.create(Node.Slice);
+        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .rbracket = arg5, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
+    }
+    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node.Chain {
+        const node = try allocator.create(Node.Slice);
+        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .end = arg5, .rbracket = arg6, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
+    }
+    fn OpChain(OpChain: *Node.Chain, FnCallArgs: *Node) *Node.Chain {
+        try arg1.parts.append(arg2);
+        result = arg1;
+    }
+    fn OpChain(OpChain: *Node.Chain, Period: *Token, Identifier: *Token) *Node.Chain {
+        const node = try allocator.create(Node.Identifier);
+        node.* = Node.Identifier{ .token = arg2, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
+    }
+    fn OpChain(OpChain: *Node.Chain, Period: *Token, QuestionMark: *Token) *Node.Chain {
         const node = try allocator.create(Node.Unwrap);
-        node.* = Node.Unwrap{ .value = arg1, .token = arg3, };
-        result = &node.base;
+        node.* = Node.Unwrap{ .token = arg3, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
     }
-    fn LValue(LValue: *Node, Period: *Token, Asterisk: *Token) *Node {
+    fn OpChain(OpChain: *Node.Chain, Period: *Token, Asterisk: *Token) *Node.Chain {
         const node = try allocator.create(Node.Deref);
-        node.* = Node.Deref{ .value = arg1, .token = arg3, };
-        result = &node.base;
+        node.* = Node.Deref{ .token = arg3, };
+        try arg1.parts.append(&node.base);
+        result = arg1;
     }
 
     // Builtin calls
@@ -169,36 +185,36 @@ pub extern "LALR" const ZigGrammar = struct {
         result = &node.base;
     }
 
-    // Call chain
-    fn CallChain(LValue: *Node, FnCallArgs: *Node) *Node {
+    // Call arguments
+    fn FnCallArgs(LParen: *Token, RParen: *Token) *Node {
         const node = try allocator.create(Node.Call);
-        node.* = Node.Call{ .name = arg1, .arguments = arg2 };
+        node.* = Node.BuiltinCall{ .lparen = arg1, .rparen = arg2 };
         result = &node.base;
     }
-    fn CallChain(LParen: *Token, CallChain: *Node, RParen: *Node) *Node { return arg2; }
-    fn CallChain(LParen: *Token, Keyword_try: *Token, CallChain: *Node, RParen: *Node) *Node {
-        const node = try allocator.create(Node.Try);
-        node.* = Node.Try{ .token = arg2, .rhs = arg3, };
-        result = &node.base;
-    }
-    fn CallChain(CallChain: *Node, LValue: *Node, FnCallArgs: *Node) *Node {
+    fn FnCallArgs(LParen: *Token, Arguments: *NodeList, RParen: *Token) *Node {
         const node = try allocator.create(Node.Call);
-        node.* = Node.Call{ .name = arg2, .arguments = arg3 };
-        if(arg1.cast(Node.Chain)) |chain| {
-            try chain.append(node);
-            result = arg1;
-        }
-        else {
-            const chain = try allocator.create(Node.Chain);
-            chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
-            try chain.identifiers.append(arg1);
-            try chain.identifiers.append(node);
-            result = chain;
-        }
+        node.* = Node.BuiltinCall{ .lparen = arg1, .arguments = arg2, .rparen = arg3 };
+        result = &node.base;
     }
 
-    // Call arguments
-    fn FnCallArgs(LParen: *Token, RParen: *Token) *Node {}
+    fn Arguments(Expr: *Node) *NodeList {
+        const node = (try allocator.create(Node.Arguments)).init(allocator);
+        try node.append(arg1);
+        result = node;
+    }
+    fn Arguments(TypeExpr: *Node) *NodeList {
+        const node = (try allocator.create(Node.Arguments)).init(allocator);
+        try node.append(arg1);
+        result = node;
+    }
+    fn Arguments(Arguments: *NodeList, Comma: *Token, Expr: *Node) *NodeList {
+        try arg1.append(arg3);
+        result = arg1;
+    }
+    fn Arguments(Arguments: *NodeList, Comma: *Token, TypeExpr: *Node) *NodeList {
+        try arg1.append(arg3);
+        result = arg1;
+    }
 
     // Labels
     fn MaybeBlockLabel() ?*Node {
@@ -228,6 +244,151 @@ pub extern "LALR" const ZigGrammar = struct {
     }
 
     fn Expr(BlockExpr: *Node) *Node { result = arg1; }
+    fn Expr(Literal: *Node) *Node { result = arg1; }
+    fn Expr(OpChain: *Node.Chain) *Node { result = &arg1.base; }
+    fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node { result = arg2; }
+    fn Expr(Keyword_unreachable: *Token) *Node {
+        const node = try allocator.create(Node.Unreachable);
+        node.* = Node.Unreachable{ .token = arg1 };
+        result = &node.base;
+    }
+
+    // Type expressions
+    fn TypeExpr(QuestionMark: *Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(Asterisk: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(AsteriskAsterisk: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(BracketStarBracket: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(BracketStarCBracket: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
+
+    fn MaybeAlign() ?*Node { result = null; }
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, AlignExpr: *Node.Align, RParen: *Token) *Node {
+        // AlignExpr is little weird due to a parsing conflict on `:` between BlockExpr and Align
+        arg3.token = arg1;
+        arg3.lparen = arg2;
+        arg3.rparen = arg4;
+        result = &arg3.base;
+    }
+
+    fn AlignExpr(Expr: *Node) *Node.Align {
+        const node = try allocator.create(Node.Align);
+        const fake = @ptrCast(*Token, arg1);
+        node.* = Node.Align{ .token = fake, .lparen = fake, .value = arg1, .rparen = fake };
+        result = node;
+    }
+    fn AlignExpr(LParen: *Token, Expr: *Node, RParen: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
+        const sub1 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg5 };
+        const sub2 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg7 };
+        const node = try allocator.create(Node.Align);
+        const fake = arg1;
+        node.* = Node.Align{ .token = fake, .lparen = fake, .value = arg2, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
+        result = node;
+    }
+    fn AlignExpr(Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
+        const value = try allocator.create(Node.Identifier);
+        value.* = Node.Identifier{ .token = arg1 };
+        const sub1 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg3 };
+        const sub2 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg5 };
+        const node = try allocator.create(Node.Align);
+        const fake = arg1;
+        node.* = Node.Align{ .token = fake, .lparen = fake, .value = value, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
+        result = node;
+    }
+    fn AlignExpr(IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
+        const value = try allocator.create(Node.IntegerLiteral);
+        value.* = Node.IntegerLiteral{ .token = arg1 };
+        const sub1 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg3 };
+        const sub2 = try allocator.create(Node.IntegerLiteral);
+        sub1.* = Node.IntegerLiteral{ .token = arg5 };
+        const node = try allocator.create(Node.Align);
+        const fake = arg1;
+        node.* = Node.Align{ .token = fake, .lparen = fake, .value = value, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
+        result = node;
+    }
+
+    fn MaybeConst() ?*Token { result = null; }
+    fn MaybeConst(Keyword_const: *Token) ?*Token { result = arg1; }
+
+    fn MaybeVolatile() ?*Token { result = null; }
+    fn MaybeVolatile(Keyword_volatile: *Token) ?*Token { result = arg1; }
+
+    fn MaybeAllowzero() ?*Token { result = null; }
+    fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token { result = arg1; }
+
+    // Literals
+    fn Literal(IntegerLiteral: *Token) *Node {
+        const node = try allocator.create(Node.IntegerLiteral);
+        node.* = Node.IntegerLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(FloatLiteral: *Token) *Node {
+        const node = try allocator.create(Node.FloatLiteral);
+        node.* = Node.FloatLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(EnumLiteral: *Token) *Node {
+        const node = try allocator.create(Node.EnumLiteral);
+        node.* = Node.EnumLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(StringLiteral: *Token) *Node {
+        const node = try allocator.create(Node.StringLiteral);
+        node.* = Node.StringLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(MultilineStringLiterals: *Node) *Node {
+        result = arg1;
+    }
+
+    fn Literal(CharLiteral: *Token) *Node {
+        const node = try allocator.create(Node.CharLiteral);
+        node.* = Node.CharLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(Keyword_true: *Token) *Node {
+        const node = try allocator.create(Node.BoolLiteral);
+        node.* = Node.BoolLiteral{ .token = arg1, .is_true = true };
+        result = &node.base;
+    }
+
+    fn Literal(Keyword_false: *Token) *Node {
+        const node = try allocator.create(Node.BoolLiteral);
+        node.* = Node.BoolLiteral{ .token = arg1, .is_true = false };
+        result = &node.base;
+    }
+
+    fn Literal(Keyword_null: *Token) *Node {
+        const node = try allocator.create(Node.NullLiteral);
+        node.* = Node.NullLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn Literal(Keyword_undefined: *Token) *Node {
+        const node = try allocator.create(Node.UndefinedLiteral);
+        node.* = Node.UndefinedLiteral{ .token = arg1 };
+        result = &node.base;
+    }
+
+    fn MultilineStringLiterals(MultilineStringLiteral: *Token) *Node {
+        const node = try allocator.create(Node.MultilineStringLiteral);
+        node.* = Node.MultilineStringLiteral{ .tokens = Node.TokenList.init(allocator) };
+        try node.tokens.append(arg1);
+        result = &node.base;
+    }
+    fn MultilineStringLiterals(MultilineStringLiteral: *Node, MultilineStringLiteral: *Token) *Node {
+        try arg1.tokens.append(arg2);
+        result = &arg1.base;
+    }
 
     // Operators
     fn AssignOp(AsteriskEqual: *Token) *Token { result = arg1; }
@@ -243,4 +404,32 @@ pub extern "LALR" const ZigGrammar = struct {
     fn AssignOp(PlusPercentEqual: *Token) *Token { result = arg1; }
     fn AssignOp(MinusPercentEqual: *Token) *Token { result = arg1; }
     fn AssignOp(Equal: *Token) *Token { result = arg1; }
+
+    fn CompareOp(EqualEqual: *Token) *Token { result = arg1; }
+    fn CompareOp(BangEqual: *Token) *Token { result = arg1; }
+    fn CompareOp(AngleBracketLeft: *Token) *Token { result = arg1; }
+    fn CompareOp(AngleBracketRight: *Token) *Token { result = arg1; }
+    fn CompareOp(AngleBracketLeftEqual: *Token) *Token { result = arg1; }
+    fn CompareOp(AngleBracketRightEqual: *Token) *Token { result = arg1; }
+
+    fn BitwiseOp(Ampersand: *Token) *Token { result = arg1; }
+    fn BitwiseOp(Caret: *Token) *Token { result = arg1; }
+    fn BitwiseOp(Keyword_orelse: *Token) *Token { result = arg1; }
+    fn BitwiseOp(Keyword_catch: *Token) *Token { result = arg1; }
+
+    fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token { result = arg1; }
+    fn BitShiftOp(AngleBracketAngleBracketRight: *Token) *Token { result = arg1; }
+
+    fn AdditionOp(Plus: *Token) *Token { result = arg1; }
+    fn AdditionOp(Minus: *Token) *Token { result = arg1; }
+    fn AdditionOp(PlusPlus: *Token) *Token { result = arg1; }
+    fn AdditionOp(PlusPercent: *Token) *Token { result = arg1; }
+    fn AdditionOp(MinusPercent: *Token) *Token { result = arg1; }
+
+    fn MultiplyOp(PipePipe: *Token) *Token { result = arg1; }
+    fn MultiplyOp(Asterisk: *Token) *Token { result = arg1; }
+    fn MultiplyOp(Slash: *Token) *Token { result = arg1; }
+    fn MultiplyOp(Percent: *Token) *Token { result = arg1; }
+    fn MultiplyOp(AsteriskAsterisk: *Token) *Token { result = arg1; }
+    fn MultiplyOp(AsteriskPercent: *Token) *Token { result = arg1; }
 };

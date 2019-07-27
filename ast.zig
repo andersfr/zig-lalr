@@ -1,12 +1,21 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
+pub const Token = struct {
+    id: Id,
+
+    pub const Id = enum(u8) { Invalid = 0 };
+};
+
 pub const Node = struct {
     id: Id,
 
     const Self = @This();
 
     pub const Id = enum {
+        If,
+        For,
+        While,
         Block,
         BlockLabel,
         BreakLabel,
@@ -30,6 +39,19 @@ pub const Node = struct {
         Slice,
         Call,
         BuiltinCall,
+        Payload,
+        Align,
+
+        // Literals
+        IntegerLiteral,
+        FloatLiteral,
+        EnumLiteral,
+        StringLiteral,
+        MultilineStringLiteral,
+        CharLiteral,
+        BoolLiteral,
+        NullLiteral,
+        UndefinedLiteral,
     };
 
     pub fn cast(base: *Node, comptime T: type) ?*T {
@@ -50,7 +72,9 @@ pub const Node = struct {
     }
 
     pub const NodeList = ArrayList(*Self, 4);
+    pub const TokenList = ArrayList(*Token, 4);
     pub const Statements = NodeList;
+    pub const Arguments = NodeList;
 
     pub const Block = struct {
         base: Node = Node{ .id = .Block },
@@ -165,18 +189,16 @@ pub const Node = struct {
     pub const Deref = struct {
         base: Node = Node{ .id = .Deref },
         token: *Token,
-        value: *Node,
     };
 
     pub const Unwrap = struct {
         base: Node = Node{ .id = .Unwrap },
         token: *Token,
-        value: *Node,
     };
 
     pub const Slice = struct {
         base: Node = Node{ .id = .Slice },
-        lhs: *Node,
+        lhs: ?*Node = null,
         lbracket: *Token,
         begin: *Node,
         ellipsis: ?*Token = null,
@@ -186,15 +208,81 @@ pub const Node = struct {
 
     pub const Call = struct {
         base: Node = Node{ .id = .Call },
-        name: *Token,
-        arguments: *Node,
+        lparen: *Token,
+        arguments: ?*Arguments = null,
+        rparen: *Token,
     };
 
     pub const BuiltinCall = struct {
         base: Node = Node{ .id = .BuiltinCall },
         token: *Token,
         identifier: *Token,
-        arguments: *Node,
+        arguments: ?*Arguments = null,
+    };
+
+    pub const Payload = struct {
+        base: Node = Node{ .id = .Payload },
+        lpipe: *Token,
+        identifier: *Token,
+        index: ?*Token = null,
+        rpipe: *Token,
+        bool is_ptr = false,
+    };
+
+    pub const Align = struct {
+        base: Node = Node{ .id = .Align },
+        token: *Token,
+        lparen: *Token,
+        value: *Node,
+        bit_start: ?*Node = null,
+        bit_end: ?*Node = null,
+        rparen: *Token,
+    };
+
+    pub const IntegerLiteral = struct {
+        base: Node = Node{ .id = .IntegerLiteral },
+        token: *Token,
+    };
+
+    pub const FloatLiteral = struct {
+        base: Node = Node{ .id = .FloatLiteral },
+        token: *Token,
+    };
+
+    pub const EnumLiteral = struct {
+        base: Node = Node{ .id = .EnumLiteral },
+        token: *Token,
+    };
+
+    pub const StringLiteral = struct {
+        base: Node = Node{ .id = .StringLiteral },
+        token: *Token,
+    };
+
+    pub const MultilineStringLiteral = struct {
+        base: Node = Node{ .id = .MultilineStringLiteral },
+        tokens: TokenList,
+    };
+
+    pub const CharLiteral = struct {
+        base: Node = Node{ .id = .CharLiteral },
+        token: *Token,
+    };
+
+    pub const BoolLiteral = struct {
+        base: Node = Node{ .id = .BoolLiteral },
+        token: *Token,
+        is_true: bool,
+    };
+
+    pub const NullLiteral = struct {
+        base: Node = Node{ .id = .NullLiteral },
+        token: *Token,
+    };
+
+    pub const UndefinedLiteral = struct {
+        base: Node = Node{ .id = .UndefinedLiteral },
+        token: *Token,
     };
 };
 

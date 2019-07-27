@@ -155,6 +155,16 @@ pub fn main() !void {
                             var grammar = try parseGrammar(buffer[grammar_name.start..grammar_name.end], tree, buffer, container);
                             defer grammar.deinit();
                             // grammar.debug();
+                            // warn("\npub const Id = enum(u8) {}\n", "{");
+                            // warn("    Invalid = 0,\n");
+                            // warn("    Eof = 1,\n");
+                            // var git = grammar.names_index_map.lookup.iterator();
+                            // while(git.next()) |kv| {
+                            //     if(kv.value > grammar.epsilon_index+1) {
+                            //         warn("    {} = {},\n", kv.key, kv.value - grammar.epsilon_index);
+                            //     }
+                            // }
+                            // warn("{};\n\n", "}");
                         }
                     }
                 }
