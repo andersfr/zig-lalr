@@ -30,6 +30,7 @@ pub const Node = struct {
         Try,
         Await,
         Defer,
+        VarDecl,
         Assignment,
         Identifier,
         Chain,
@@ -161,6 +162,17 @@ pub const Node = struct {
         statement: *Node,
         token: *Token,
         is_errdefer: bool,
+    };
+
+    pub const VarDecl = struct {
+        base: Node = Node{ .id = .VarDecl },
+        token: *Token,
+        identifier: *Token,
+        decltype: ?*Node = null,
+        bytealign: ?*Node = null,
+        section: ?*Node = null,
+        initializer: ?*Node = null,
+        is_const: bool,
     };
 
     pub const Assignment = struct {

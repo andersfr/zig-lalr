@@ -1,6 +1,25 @@
 usingnamespace @import("ast.zig");
 
 pub extern "LALR" const ZigGrammar = struct {
+    // TopLevel
+    fn TopLevelDecl(FnProto: *Node, Semicolon: *Token) *Node { result = arg1; }
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(MaybeExportInline: ?*Token, FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(MaybeExportExtern: ?*Token, MaybeThreadlocal: ?*Token, VarDecl: *Node, Semicolon: *Token) *Node {}
+
+    // TopLevel binding types
+    fn MaybeExportExtern() ?*Token { result = null; }
+    fn MaybeExportExtern(Keyword_export: *Token) ?*Token { result = arg1; }
+    fn MaybeExportExtern(Keyword_extern: *Token) ?*Token { result = arg1; }
+
+    fn MaybeExportInline() ?*Token { result = null; }
+    fn MaybeExportInline(Keyword_export: *Token) ?*Token { result = arg1; }
+    fn MaybeExportInline(Keyword_inline: *Token) ?*Token { result = arg1; }
+
+    fn MaybeThreadlocal() ?*Token { result = null; }
+    fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token { result = arg1; }
+
     // Blocks
     fn Block(LBrace: *Token, RBrace: *Token) *Node {
         const node = try allocator.create(Node.Block);
@@ -88,6 +107,7 @@ pub extern "LALR" const ZigGrammar = struct {
         node.* = Node.Comptime{ .token = arg1, .statement = arg2, };
         result = &node.base;
     }
+    fn Statement(VarDecl: *Node, Semicolon: *Token) *Node { result = arg1; }
     fn Statement(AssignStatement: *Node) *Node { result = arg1; }
     fn Statement(OpChain: *Node, Semicolon: *Token) *Node { result = arg1; }
     fn Statement(Keyword_try: *Token, OpChain: *Node, Semicolon: *Token) *Node {
@@ -100,6 +120,26 @@ pub extern "LALR" const ZigGrammar = struct {
         node.* = Node.Await{ .token = arg1, .rhs = arg2, };
         result = &node.base;
     }
+
+    // Variable declaration
+    fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonType: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeDeclInitializer: ?*Node) *Node {
+        const node = try allocator.create(Node.VarDecl);
+        node.* = Node.VarDecl{ .token = arg1, .identifier = arg2, .decltype = arg3, .bytealign = arg4, .section = arg5, .initializer = arg6, .is_const = true };
+        result = &node.base;
+    }
+    fn VarDecl(Keyword_var: *Token, Identifier: *Token, MaybeColonType: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeDeclInitializer: ?*Node) *Node {
+        const node = try allocator.create(Node.VarDecl);
+        node.* = Node.VarDecl{ .token = arg1, .identifier = arg2, .decltype = arg3, .bytealign = arg4, .section = arg5, .initializer = arg6, .is_const = false };
+        result = &node.base;
+    }
+
+    fn MaybeColonType() ?*Node { result = null; }
+    fn MaybeColonType(Colon: *Token, TypeExpr: *Node) ?*Node { result = arg2; }
+    fn MaybeColonType(Colon: *Token, OpChain: *Node) ?*Node { result = arg2; }
+
+    fn MaybeDeclInitializer() ?*Node { result = null; }
+    fn MaybeDeclInitializer(Equal: *Token, Expr: *Node) ?*Node { result = arg2; }
+    fn MaybeDeclInitializer(Equal: *Token, TypeExpr: *Node) ?*Node { result = arg2; }
 
     // Assignment
     fn AssignStatement(OpChain: *Node.Chain, AssignOp: *Token, Expr: *Node, Semicolon: *Token) *Node {
