@@ -74,7 +74,8 @@ pub extern "LALR" const ZigGrammar = struct {
 
     fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {}
     fn Statement(VarDecl: *Node) *Node {}
-    // fn Statement(Keyword_comptime: *Token, BlockExprStatement: *Node) *Node {}
+    fn Statement(Keyword_comptime: *Token, BlockExpr: Precedence_all(*Node)) *Node {}
+    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node, Semicolon: *Token) *Node {}
     fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {}
     fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {}

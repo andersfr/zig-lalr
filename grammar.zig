@@ -34,6 +34,7 @@ pub const Production = struct {
     terminal_id: usize = 0,
     nullable: YesNoMaybe = .Maybe,
     precedence_none: bool = false,
+    precedence_all: bool = false,
 
     const Self = @This();
 
@@ -53,6 +54,8 @@ pub const Production = struct {
         if(precedence) |str| {
             if(std.mem.compare(u8, str, "Precedence_none") == .Equal)
                 self.precedence_none = true;
+            if(std.mem.compare(u8, str, "Precedence_all") == .Equal)
+                self.precedence_all = true;
         }
         try self.symbols.append(symbol);
     }
@@ -928,6 +931,13 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 }
                                 else if(grammar.productions.items[pair.production_id].precedence_none) {
                                     // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence none):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), -transition[key]);
+                                }
+                                else if(grammar.productions.items[tkey].precedence_all) {
+                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence all):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), -transition[key]);
+                                }
+                                else if(grammar.productions.items[pair.production_id].precedence_all) {
+                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence all):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                    transition[key] = -@intCast(i32, pair.production_id);
                                 }
                                 else {
                                     warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
