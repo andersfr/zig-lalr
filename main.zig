@@ -129,7 +129,7 @@ fn parseGrammar(name: []const u8, tree: *std.zig.ast.Tree, buffer: []const u8, c
 }
 
 pub fn main() !void {
-    var file = try std.fs.File.openRead("ziglang.zig");
+    var file = try std.fs.File.openRead("zigweb.zig");
     defer file.close();
 
     var stream = file.inStream();
@@ -164,6 +164,11 @@ pub fn main() !void {
                             //         warn("    {} = {},\n", kv.key, kv.value - grammar.epsilon_index);
                             //     }
                             // }
+                            // const x = grammar.names_index_map.lookup.size - grammar.epsilon_index;
+                            // warn("    ShebangLine = {},\n", x);
+                            // warn("    LineComment = {},\n", x+1);
+                            // warn("    Newline = {},\n", x+2);
+                            // warn("    Ignore = {},\n", x+3);
                             // warn("{};\n\n", "}");
                         }
                     }

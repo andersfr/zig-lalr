@@ -33,6 +33,7 @@ pub const Production = struct {
     symbol_ids: []usize = [0]usize{},
     terminal_id: usize = 0,
     nullable: YesNoMaybe = .Maybe,
+    precedence_none: bool = false,
 
     const Self = @This();
 
@@ -49,6 +50,10 @@ pub const Production = struct {
     }
 
     pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8) !void {
+        if(precedence) |str| {
+            if(std.mem.compare(u8, str, "Precedence_none") == .Equal)
+                self.precedence_none = true;
+        }
         try self.symbols.append(symbol);
     }
 
@@ -890,9 +895,18 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     }
                     else if(transition[key] > 0) {
                         if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
-                            warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                            shift_reduce_conflicts += 1;
-                            has_conflicts = true;
+                            // TODO: make a precedence fix to allow symbols to enforce a greedy shift
+                            if(std.mem.compare(u8, grammar.names_index_map.keyOf(key), "Keyword_else") != .Equal) {
+                                // TODO: this can actually be deduced from the grammar
+                                if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
+                                    transition[key] = -@intCast(i32, pair.production_id);
+                                }
+                                else {
+                                    warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                    shift_reduce_conflicts += 1;
+                                    has_conflicts = true;
+                                }
+                            }
                         }
                     }
                     else {
@@ -903,9 +917,23 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 transition[key] = -@intCast(i32, pair.production_id);
                             }
                             else {
-                                warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                reduce_reduce_conflicts += 1;
-                                has_conflicts = true;
+                                const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
+                                if(resolve >= 0) {
+                                    // warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
+                                    transition[key] = -resolve;
+                                }
+                                else if(grammar.productions.items[tkey].precedence_none) {
+                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence none):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                    transition[key] = -@intCast(i32, pair.production_id);
+                                }
+                                else if(grammar.productions.items[pair.production_id].precedence_none) {
+                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence none):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), -transition[key]);
+                                }
+                                else {
+                                    warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                    reduce_reduce_conflicts += 1;
+                                    has_conflicts = true;
+                                }
                             }
                         }
                     }
@@ -927,10 +955,11 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             }
                             else if(transition[key] > 0) {
                                 // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
+                                // warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
                             }
                             else {
                                 if(transition[key] != -@intCast(i32, null_production_id)) {
-                                    if(terminal_nullability[@bitCast(u32, -transition[key])] == .Yes) {
+                                    if(terminal_nullability[grammar.productions.items[@bitCast(u32, -transition[key])].terminal_id] == .Yes) {
                                         warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
                                         reduce_reduce_conflicts += 1;
                                         has_conflicts = true;
@@ -1026,26 +1055,57 @@ fn resolveShiftReducePass(grammar: *Grammar, isocore: *IsocorePairSet, productio
     const production = grammar.productions.items[production_id];
     var good: usize = 1;
     var it = isocore.iterator();
-    outer: while(it.next()) |kv| {
+    // Resolve as shift
+    while(it.next()) |kv| {
         if(kv.key.production_id != production_id) {
             const sproduction = grammar.productions.items[kv.key.production_id];
-            // Resolve as greedy shift when productions are identical but match can be extended
-            if(production.terminal_id == sproduction.terminal_id) {
-                var i: usize = 0;
-                while(i < production.symbol_ids.len) : (i += 1) {
-                    if(production.symbol_ids[i] != sproduction.symbol_ids[i])
-                        break :outer;
-                }
-                good += 1;
-                continue :outer;
-            }
             // Resolve as greedy shift when shift eventually produces itself as terminal
-            if(production.terminal_id != sproduction.terminal_id and sproduction.terminal_id == production.symbol_ids[production.symbol_ids.len-1]) {
-                good += 1;
-                continue :outer;
+            if(production.terminal_id != sproduction.terminal_id) {
+                if(sproduction.terminal_id == production.symbol_ids[production.symbol_ids.len-1]) {
+                    good += 1;
+                    continue;
+                }
+                else if(subProductionPass(grammar, kv.key.production_id, production_id)) {
+                    good += 1;
+                    continue;
+                }
             }
-            break;
         }
     }
     return good == isocore.size;
+}
+
+fn resolveReduceReducePass(grammar: *Grammar, lproduction_id: usize, rproduction_id: usize) i32 {
+    if(lproduction_id > rproduction_id)
+        return resolveReduceReducePass(grammar, rproduction_id, lproduction_id);
+    var result: i32 = -1;
+    if(subProductionPass(grammar, lproduction_id, rproduction_id))
+        result = @bitCast(i32, @truncate(u32, lproduction_id));
+    if(subProductionPass(grammar, rproduction_id, lproduction_id))
+        result = switch(result) {
+            -1 => @bitCast(i32, @truncate(u32, rproduction_id)),
+            else => -1,
+        };
+    return result;
+}
+
+fn subProductionPass(grammar: *Grammar, lproduction_id: usize, rproduction_id: usize) bool {
+    const lproduction = grammar.productions.items[lproduction_id];
+    const rproduction = grammar.productions.items[rproduction_id];
+    const rsymbol = rproduction.symbol_ids[rproduction.symbol_ids.len-1];
+    var i: usize = 0;
+    while(i < grammar.productions.len) : (i += 1) {
+        if(i == lproduction_id)
+            continue;
+
+        const production = grammar.productions.items[i];
+
+        if(production.symbol_ids.len == 1 and production.symbol_ids[0] == lproduction.terminal_id) {
+            if(production.terminal_id == rsymbol)
+                return true;
+            if(subProductionPass(grammar, i, rproduction_id))
+                return true;
+        }
+    }
+    return false;
 }
