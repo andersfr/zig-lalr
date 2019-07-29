@@ -32,9 +32,8 @@ pub const Production = struct {
     symbols: ArrayList([]const u8),
     symbol_ids: []usize = [0]usize{},
     terminal_id: usize = 0,
+    consumes: usize = 0,
     nullable: YesNoMaybe = .Maybe,
-    precedence_none: bool = false,
-    precedence_all: bool = false,
 
     const Self = @This();
 
@@ -51,22 +50,34 @@ pub const Production = struct {
     }
 
     pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8) !void {
-        if(precedence) |str| {
-            if(std.mem.compare(u8, str, "Precedence_none") == .Equal)
-                self.precedence_none = true;
-            if(std.mem.compare(u8, str, "Precedence_all") == .Equal)
-                self.precedence_all = true;
+        if(precedence) |p| {
+            if(std.mem.compare(u8, p, "Noconsume") == .Equal) {
+                assert(self.symbols.len > 0);
+                self.consumes = self.symbols.len;
+            }
         }
-        try self.symbols.append(symbol);
+
+        // Allow end-of-file token to be specified
+        if(std.mem.compare(u8, symbol, "Eof") == .Equal) {
+            assert(self.consumes == self.symbols.len);
+            try self.symbols.append("$eof");
+        }
+        else {
+            assert(self.consumes == 0 or self.consumes == self.symbols.len);
+            try self.symbols.append(symbol);
+        }
     }
 
     pub fn finalize(self: *Self) !void {
+        // How many symbols does this production consume?
+        if(self.consumes == 0) {
+            self.consumes = self.symbols.len;
+        }
         // Check if production is nullable
         if(self.symbols.len == 0) {
             // Traditionally represented in litterature as the greek Epsilon
             try self.append("$epsilon", null);
             self.nullable = .Yes;
-
         }
         self.symbol_ids = try self.symbols.allocator.alloc(usize, self.symbols.len);
     }
@@ -137,9 +148,10 @@ pub const Grammar = struct {
 
     pub fn append(self: *Self, production: *Production) !void {
         // The first terminal encountered is considered the initial production
-        if (self.productions.len == 0)
-        // Augment the grammar with rule: $accept <- `initial` $eof
+        if (self.productions.len == 0) {
+            // Augment the grammar with rule: $accept <- `initial` $eof
             try self.augment(production.terminal);
+        }
 
         // Allow the production to set internal fields
         try production.finalize();
@@ -898,7 +910,6 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     }
                     else if(transition[key] > 0) {
                         if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
-                            // TODO: make a precedence fix to allow symbols to enforce a greedy shift
                             if(std.mem.compare(u8, grammar.names_index_map.keyOf(key), "Keyword_else") != .Equal) {
                                 // TODO: this can actually be deduced from the grammar
                                 if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
@@ -925,24 +936,25 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                     // warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
                                     transition[key] = -resolve;
                                 }
-                                else if(grammar.productions.items[tkey].precedence_none) {
-                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence none):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
-                                    transition[key] = -@intCast(i32, pair.production_id);
-                                }
-                                else if(grammar.productions.items[pair.production_id].precedence_none) {
-                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence none):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), -transition[key]);
-                                }
-                                else if(grammar.productions.items[tkey].precedence_all) {
-                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence all):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), -transition[key]);
-                                }
-                                else if(grammar.productions.items[pair.production_id].precedence_all) {
-                                    // warn("\x1b[31mResolved Reduce-Reduce conflict (precedence all):\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
-                                    transition[key] = -@intCast(i32, pair.production_id);
-                                }
                                 else {
-                                    warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                    reduce_reduce_conflicts += 1;
-                                    has_conflicts = true;
+                                    // TODO: these are quite nasty fixes to a follow set problem
+                                    if(production.symbol_ids[pair.symbol_index-1] == grammar.names_index_map.indexOf("BlockExpr").?) {
+                                        const type_expr = production.terminal_id == grammar.names_index_map.indexOf("PrimaryTypeExpr").?;
+                                        const semicolon = key == grammar.names_index_map.indexOf("Semicolon").?;
+                                        const nkey = if((semicolon and type_expr) or !(semicolon or type_expr)) -@intCast(i32, pair.production_id) else transition[key];
+                                        transition[key] = nkey;
+                                    }
+                                    else if(production.symbol_ids[pair.symbol_index-1] == grammar.names_index_map.indexOf("SwitchExpr").?) {
+                                        const type_expr = production.terminal_id == grammar.names_index_map.indexOf("PrimaryTypeExpr").?;
+                                        const semicolon = key == grammar.names_index_map.indexOf("Semicolon").?;
+                                        const nkey = if((semicolon and type_expr) or !(semicolon or type_expr)) -@intCast(i32, pair.production_id) else transition[key];
+                                        transition[key] = nkey;
+                                    }
+                                    else {
+                                        warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                        reduce_reduce_conflicts += 1;
+                                        has_conflicts = true;
+                                    }
                                 }
                             }
                         }
@@ -965,7 +977,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             }
                             else if(transition[key] > 0) {
                                 // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
-                                // warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
+                                warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
                             }
                             else {
                                 if(transition[key] != -@intCast(i32, null_production_id)) {

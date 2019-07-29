@@ -18,9 +18,9 @@ pub extern "LALR" const ZigGrammar = struct {
     fn ContainerMember(TestDecl: *Node) *Node {}
     fn ContainerMember(TopLevelComptime: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
-    // Note: this should be deprecated
-    // fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
+    // TODO: create fix to enable final ContainerField without Comma
+    fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, RBrace: Noconsume(*Token)) *Node {}
 
     // Test
     fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node {}
@@ -74,16 +74,15 @@ pub extern "LALR" const ZigGrammar = struct {
 
     fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {}
     fn Statement(VarDecl: *Node) *Node {}
-    fn Statement(Keyword_comptime: *Token, BlockExpr: Precedence_all(*Node)) *Node {}
-    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node, Semicolon: *Token) *Node {}
+    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
     fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {}
     fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(Keyword_errdefer: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(IfStatement: *Node) *Node {}
     fn Statement(LabeledStatement: *Node) *Node {}
-    fn Statement(SwitchExpr: Precedence_none(*Node)) *Node {}
-    fn Statement(AssignExprOrExpr: *Node, Semicolon: *Token) *Node {}
+    fn Statement(SwitchExpr: *Node) *Node {}
+    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
     // Note: these are expressions but should be statements
     fn Statement(Keyword_resume: *Token, Expr: *Node, Semicolon: *Token) *Node {}
@@ -92,40 +91,38 @@ pub extern "LALR" const ZigGrammar = struct {
     fn Statement(Keyword_continue: *Token, MaybeBreakLabel: ?*Node, Semicolon: *Token) *Node {}
     fn Statement(Keyword_return: *Token, MaybeExpr: ?*Node, Semicolon: *Token) *Node {}
 
-    fn IfStatement(IfPrefix: *Node, BlockExpr: Precedence_none(*Node)) *Node {}
+    fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
-    fn IfStatement(IfPrefix: *Node, AssignExprOrExpr: *Node, Semicolon: *Token) *Node {}
-    fn IfStatement(IfPrefix: *Node, AssignExprOrExpr: *Node, ElseStatement: *Node) *Node {}
+    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
     fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node {}
 
     fn LabeledStatement(BlockExpr: *Node, LoopStatement: *Node) *Node {}
-    fn LabeledStatement(BlockExpr: Precedence_none(*Node)) *Node {}
+    fn LabeledStatement(BlockExpr: *Node) *Node {}
 
     fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
     fn LoopStatement(MaybeInline: ?*Token, WhileStatement: *Node) *Node {}
 
-    fn ForStatement(ForPrefix: *Node, BlockExpr: Precedence_none(*Node)) *Node {}
+    fn ForStatement(ForPrefix: *Node, BlockExpr: *Node) *Node {}
     fn ForStatement(ForPrefix: *Node, BlockExpr: *Node, ElseNoPayloadStatement: *Node) *Node {}
-    fn ForStatement(ForPrefix: *Node, AssignExprOrExpr: *Node, Semicolon: *Token) *Node {}
-    fn ForStatement(ForPrefix: *Node, AssignExprOrExpr: *Node, ElseNoPayloadStatement: *Node) *Node {}
+    fn ForStatement(ForPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn ForStatement(ForPrefix: *Node, AssignExpr: *Node, ElseNoPayloadStatement: *Node) *Node {}
     fn ElseNoPayloadStatement(Keyword_else: *Token, Statement: *Node) *Node {}
 
-    fn WhileStatement(WhilePrefix: *Node, BlockExpr: Precedence_none(*Node)) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, BlockExpr: *Node) *Node {}
     fn WhileStatement(WhilePrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
-    fn WhileStatement(WhilePrefix: *Node, AssignExprOrExpr: *Node, Semicolon: *Token) *Node {}
-    fn WhileStatement(WhilePrefix: *Node, AssignExprOrExpr: *Node, ElseStatement: *Node) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
 
-    fn BlockExprStatement(BlockExpr: Precedence_none(*Node)) *Node {}
+    fn BlockExprStatement(BlockExpr: *Node) *Node {}
     fn BlockExprStatement(Statement: *Node, Semicolon: *Token) *Node {}
 
     fn BlockExpr(Block: *Node) *Node {}
     fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
 
     // Expression level
-    fn AssignExprOrExpr(AssignExpr: *Node) *Node {}
-    fn AssignExprOrExpr(Expr: *Node) *Node {}
-
-    fn AssignExprOrExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node) *Node {}
 
     fn Expr(BoolOrExpr: *Node) *Node {}
     // Note: this should be deprecated
@@ -161,8 +158,10 @@ pub extern "LALR" const ZigGrammar = struct {
     // fn PrimaryExpr(IfExpr: *Node) *Node {}
     // Note: break, cancel, continue, resume, return should be statements
     fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
-    // fn PrimaryExpr(BlockExpr: *Node) *Node {}
-    fn PrimaryExpr(MaybeBlockLabel: ?*Node, LoopExpr: *Node) *Node {}
+    // Note: this makes no sense as TypeExpr already implements BlockExpr
+    // fn PrimaryExpr(Block: *Node) *Node {}
+    fn PrimaryExpr(LoopExpr: *Node) *Node {}
+    fn PrimaryExpr(BlockLabel: *Token, LoopExpr: *Node) *Node {}
     fn PrimaryExpr(CurlySuffixExpr: *Node) *Node {}
 
     fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
@@ -208,6 +207,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
     fn PrimaryTypeExpr(IntegerLiteral: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
+    // fn PrimaryTypeExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     fn PrimaryTypeExpr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_false: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_null: *Token) *Node {}
@@ -267,7 +267,7 @@ pub extern "LALR" const ZigGrammar = struct {
 
     fn FieldInit(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *Node {}
 
-    fn WhileContinueExpr(Colon: *Token, LParen: *Token, AssignExprOrExpr: *Node, RParen: *Token) *Node {}
+    fn WhileContinueExpr(Colon: *Token, LParen: *Token, AssignExpr: *Node, RParen: *Token) *Node {}
 
     fn MaybeLinkSection() ?*Node {}
     fn MaybeLinkSection(Keyword_linksection: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
@@ -420,6 +420,10 @@ pub extern "LALR" const ZigGrammar = struct {
     // Alignment
     fn MaybeByteAlign() ?*Node {}
     fn MaybeByteAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
+    
+    fn MaybeAlign() *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, ColonColon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
 
     // Lists
     fn IdentifierList(Identifier: *Token) *NodeList {}
