@@ -82,6 +82,20 @@ pub const Production = struct {
         self.symbol_ids = try self.symbols.allocator.alloc(usize, self.symbols.len);
     }
 
+    pub fn debugToFile(self: Self, grammar: *const Grammar, file: *std.fs.File.OutStream) !void {
+        try file.stream.print("{} ", varToStr(self.nullable));
+        try file.stream.print("{}[T{}] <-", self.terminal, self.terminal_id);
+        for(self.symbol_ids) |id,i| {
+            if(id >= grammar.epsilon_index) {
+                try file.stream.print(" {}[S{}]", self.symbols.at(i), id - grammar.epsilon_index);
+            }
+            else {
+                try file.stream.print(" {}[T{}]", self.symbols.at(i), id);
+            }
+        }
+        try file.stream.write("\n");
+    }
+
     pub fn debug(self: Self, grammar: *const Grammar) void {
         warn("{} ", varToStr(self.nullable));
         self.debugWithDot(grammar, ~@intCast(usize, 0));
@@ -215,6 +229,13 @@ pub const Grammar = struct {
         return self.epsilon_index;
     }
 
+    pub fn debugToFile(self: *const Self, file: *std.fs.File.OutStream) !void {
+        var it = self.productions.iterator();
+        while(it.next()) |production| {
+            try production.debugToFile(self, file);
+        }
+    }
+
     pub fn debug(self: *const Self) void {
         warn("{}\n", self.grammar_name);
         var it = self.productions.iterator();
@@ -225,7 +246,7 @@ pub const Grammar = struct {
     }
 
     fn augment(self: *Self, name: []const u8) !void {
-        // Augmenting a grammar means that it gets the sepcial rule: $accept <- `initial` $eof
+        // Augmenting a grammar means that it gets the special rule: $accept <- `initial` $eof
         var production = try self.allocator.create(Production);
         production.* = Production.init(self.allocator, "$accept");
         errdefer production.deinit();
@@ -910,16 +931,18 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     }
                     else if(transition[key] > 0) {
                         if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
-                            if(std.mem.compare(u8, grammar.names_index_map.keyOf(key), "Keyword_else") != .Equal) {
-                                // TODO: this can actually be deduced from the grammar
-                                if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
+                            // TODO: this can actually be deduced from the grammar
+                            if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
+                                const Else = key == grammar.names_index_map.indexOf("Keyword_else").?;
+                                warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                if(!Else) {
                                     transition[key] = -@intCast(i32, pair.production_id);
                                 }
-                                else {
-                                    warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                    shift_reduce_conflicts += 1;
-                                    has_conflicts = true;
-                                }
+                            }
+                            else {
+                                warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                shift_reduce_conflicts += 1;
+                                has_conflicts = true;
                             }
                         }
                     }

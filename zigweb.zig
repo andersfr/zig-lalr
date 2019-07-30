@@ -157,7 +157,7 @@ pub extern "LALR" const ZigGrammar = struct {
     // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
     // fn PrimaryExpr(IfExpr: *Node) *Node {}
     // Note: break, cancel, continue, resume, return should be statements
-    fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
+    // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     // Note: this makes no sense as TypeExpr already implements BlockExpr
     // fn PrimaryExpr(Block: *Node) *Node {}
     fn PrimaryExpr(LoopExpr: *Node) *Node {}
@@ -206,8 +206,8 @@ pub extern "LALR" const ZigGrammar = struct {
     // Note: IfExpr and IfTypeExpr were combined to avoid conflicts
     fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
     fn PrimaryTypeExpr(IntegerLiteral: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
-    // fn PrimaryTypeExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
+    // fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     fn PrimaryTypeExpr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_false: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_null: *Token) *Node {}
