@@ -207,9 +207,9 @@ fn writeGrammar(grammar: Grammar) !void {
             \\const std = @import("std");
             \\
         );
-        try out.stream.write("const std = @import(\"std\");\n\n");
         try out.stream.print("const Token = @import(\"{}\").Token;\n", tokens_name.view());
         try out.stream.print("const Id = @import(\"{}\").Id;\n", tokens_name.view());
+        try out.stream.print("const TerminalId = @import(\"{}\").TerminalId;\n", tokens_name.view());
         try out.stream.print("const Transitions = @import(\"{}\");\n\n", transitions_name.view());
         try out.stream.write(
             \\
@@ -510,7 +510,7 @@ fn writeGrammar(grammar: Grammar) !void {
 }
 
 pub fn main() !void {
-    var file = try std.fs.File.openRead("zigweb.zig");
+    var file = try std.fs.File.openRead("ziglang.zig");
     defer file.close();
 
     var stream = file.inStream();

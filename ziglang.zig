@@ -1,475 +1,505 @@
-usingnamespace @import("ast.zig");
+pub extern "LALR" const zig_grammar = struct {
+    fn Root() ?*Node {}
+    fn Root(ContainerMembers: *Node) ?*Node {}
 
-pub extern "LALR" const ZigGrammar = struct {
-    // TopLevel
-    fn TopLevelDecl(FnProto: *Node, Semicolon: *Token) *Node { result = arg1; }
-    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(MaybeExportInline: ?*Token, FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(MaybeExportExtern: ?*Token, MaybeThreadlocal: ?*Token, VarDecl: *Node, Semicolon: *Token) *Node {}
+    // DocComments
+    fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
+    fn DocCommentLines(DocCommentLines: *NodeList, DocComment: *Token) *NodeList {}
+    fn DocCommentLines(DocComment: *Token) *NodeList {}
+
+    // Containers
+    fn MaybeContainerMembers() ?*NodeList {}
+    fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList {}
+
+    fn ContainerMembers(ContainerMembers: *NodeList, ContainerMember: *Node) *NodeList {}
+    fn ContainerMembers(ContainerMembers: *NodeList, ContainerMemberWithDocComment: *Node) *NodeList {}
+    fn ContainerMembers(ContainerMember: *Node) *NodeList {}
+    fn ContainerMembers(ContainerMemberWithDocComment: *Node) *NodeList {}
+
+    fn ContainerMember(TestDecl: *Node) *Node {}
+    fn ContainerMember(TopLevelComptime: *Node) *Node {}
+    fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
+    fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
+    // TODO: create fix to enable final ContainerField without Comma
+    // fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, RBrace: Noconsume(*Token)) *Node {}
+
+    // Test
+    fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node {}
+
+    // Comptime
+    fn TopLevelComptime(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
+
+    // TopLevel declarations
+    fn TopLevelDecl(MaybeExternPackage: ?*Node, FnProto: *Node, SemicolonOrBlock: ?*Node) *Node {}
+    fn TopLevelDecl(MaybeExportInline: ?*Token, FnProto: *Node, SemicolonOrBlock: ?*Node) *Node {}
+    fn TopLevelDecl(MaybeExternPackage: ?*Node, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(MaybeExportExtern: ?*Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(Keyword_usingnamespace: *Token, Expr: *Node, Semicolon: *Token) *Node {}
+    // TODO: Keyword_use is deprecated
+    fn TopLevelDecl(Keyword_use: *Token, Expr: *Node, Semicolon: *Token) *Node {}
 
     // TopLevel binding types
-    fn MaybeExportExtern() ?*Token { result = null; }
-    fn MaybeExportExtern(Keyword_export: *Token) ?*Token { result = arg1; }
-    fn MaybeExportExtern(Keyword_extern: *Token) ?*Token { result = arg1; }
+    fn MaybeExternPackage() ?*Node {}
+    fn MaybeExternPackage(Keyword_extern: *Token, StringLiteral: *Token) ?*Node {}
 
-    fn MaybeExportInline() ?*Token { result = null; }
-    fn MaybeExportInline(Keyword_export: *Token) ?*Token { result = arg1; }
-    fn MaybeExportInline(Keyword_inline: *Token) ?*Token { result = arg1; }
+    fn MaybeExportExtern() ?*Token {}
+    fn MaybeExportExtern(Keyword_export: *Token) ?*Token {}
+    fn MaybeExportExtern(Keyword_extern: *Token) ?*Token {}
 
-    fn MaybeThreadlocal() ?*Token { result = null; }
-    fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token { result = arg1; }
+    fn MaybeExportInline() ?*Token {}
+    fn MaybeExportInline(Keyword_export: *Token) ?*Token {}
+    fn MaybeExportInline(Keyword_inline: *Token) ?*Token {}
 
-    // Blocks
-    fn Block(LBrace: *Token, RBrace: *Token) *Node {
-        const node = try allocator.create(Node.Block);
-        node.* = Node.Block{ .lbrace = arg1, .rbrace = arg2, };
-        result = node;
-    }
-    fn Block(LBrace: *Token, Statements: *Node.Statements, RBrace: *Token) *Node {
-        const node = try allocator.create(Node.Block);
-        node.* = Node.Block{ .lbrace = arg1, .statements = arg2, .rbrace = arg3, };
-        result = &node.base;
-    }
+    fn MaybeThreadlocal() ?*Token {}
+    fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token {}
 
-    fn BlockExpr(MaybeBlockLabel: ?*Node, Block: *Node) *Node {
-        arg2.label = arg1;
-        result = arg2;
-    }
+    // Functions
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
+    fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
+    fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
+
+    // Variables
+    fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
+    fn VarDecl(Keyword_var: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
+
+    // Container field
+    fn ContainerField(Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeEqualExpr: ?*Node) *Node {}
 
     // Statements
-    fn Statements(Statement: *Node) *Node.Statements {
-        const statements = (try allocator.create(Node.Statements)).init(allocator);
-        try statements.append(arg1);
-        result = statements;
-    }
-    fn Statements(Statements: *Node.Statements, Statement: *Node) *Node.Statements {
-        try arg1.append(arg2);
-        result = arg1;
-    }
+    fn MaybeStatements() ?*NodeList {}
+    fn MaybeStatements(Statements: *Node) ?*NodeList {}
 
-    // Statement
-    fn Statement(Block: *Node) *Node {
-        result = arg1;
-    }
-    fn Statement(Keyword_unreachable: *Token, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Unreachable);
-        node.* = Node.Unreachable{ .token = arg1 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Suspend);
-        node.* = Node.Suspend{ .token = arg1 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_suspend: *Token, Block: *Node) *Node {
-        const node = try allocator.create(Node.Suspend);
-        node.* = Node.Suspend{ .token = arg1, .block = arg2 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_resume: *Token, Expr: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Resume);
-        node.* = Node.Resume{ .token = arg1, .value = arg2 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_cancel: *Token, Expr: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Cancel);
-        node.* = Node.Cancel{ .token = arg1, .value = arg2 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_break: *Token, MaybeBreakLabel: ?*Node, MaybeExpr: ?*Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Break);
-        node.* = Node.Break{ .token = arg1, .label = arg2, .value = arg3 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_continue: *Token, MaybeBreakLabel: ?*Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Break);
-        node.* = Node.Continue{ .token = arg1, .label = arg2 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_usingnamespace: *Token, Expr: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Usingnamespace);
-        node.* = Node.Usingnamespace{ .token = arg1, .value = arg2 };
-        result = &node.base;
-    }
-    fn Statement(Keyword_defer: *Token, BlockExpr: *Node) *Node {
-        const node = try allocator.create(Node.Defer);
-        node.* = Node.Defer{ .token = arg1, .statement = arg2, .is_errdefer = false, };
-        result = &node.base;
-    }
-    fn Statement(Keyword_errdefer: *Token, BlockExpr: *Node) *Node {
-        const node = try allocator.create(Node.Defer);
-        node.* = Node.Defer{ .token = arg1, .statement = arg2, .is_errdefer = true, };
-        result = &node.base;
-    }
-    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {
-        const node = try allocator.create(Node.Comptime);
-        node.* = Node.Comptime{ .token = arg1, .statement = arg2, };
-        result = &node.base;
-    }
-    fn Statement(VarDecl: *Node, Semicolon: *Token) *Node { result = arg1; }
-    fn Statement(AssignStatement: *Node) *Node { result = arg1; }
-    fn Statement(OpChain: *Node, Semicolon: *Token) *Node { result = arg1; }
-    fn Statement(Keyword_try: *Token, OpChain: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Try);
-        node.* = Node.Try{ .token = arg1, .rhs = arg2, };
-        result = &node.base;
-    }
-    fn Statement(Keyword_await: *Token, OpChain: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Await);
-        node.* = Node.Await{ .token = arg1, .rhs = arg2, };
-        result = &node.base;
-    }
+    fn Statements(Statement: *Node) *NodeList {}
+    fn Statements(Statements: *NodeList, Statement: *Node) *NodeList {}
 
-    // Variable declaration
-    fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonType: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeDeclInitializer: ?*Node) *Node {
-        const node = try allocator.create(Node.VarDecl);
-        node.* = Node.VarDecl{ .token = arg1, .identifier = arg2, .decltype = arg3, .bytealign = arg4, .section = arg5, .initializer = arg6, .is_const = true };
-        result = &node.base;
-    }
-    fn VarDecl(Keyword_var: *Token, Identifier: *Token, MaybeColonType: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeDeclInitializer: ?*Node) *Node {
-        const node = try allocator.create(Node.VarDecl);
-        node.* = Node.VarDecl{ .token = arg1, .identifier = arg2, .decltype = arg3, .bytealign = arg4, .section = arg5, .initializer = arg6, .is_const = false };
-        result = &node.base;
-    }
+    fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {}
+    fn Statement(VarDecl: *Node) *Node {}
+    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
+    fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {}
+    fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {}
+    fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {}
+    fn Statement(Keyword_errdefer: *Token, BlockExprStatement: *Node) *Node {}
+    fn Statement(IfStatement: *Node) *Node {}
+    fn Statement(LabeledStatement: *Node) *Node {}
+    fn Statement(SwitchExpr: *Node) *Node {}
+    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
-    fn MaybeColonType() ?*Node { result = null; }
-    fn MaybeColonType(Colon: *Token, TypeExpr: *Node) ?*Node { result = arg2; }
-    fn MaybeColonType(Colon: *Token, OpChain: *Node) ?*Node { result = arg2; }
+    fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
+    fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
+    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
+    fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node {}
 
-    fn MaybeDeclInitializer() ?*Node { result = null; }
-    fn MaybeDeclInitializer(Equal: *Token, Expr: *Node) ?*Node { result = arg2; }
-    fn MaybeDeclInitializer(Equal: *Token, TypeExpr: *Node) ?*Node { result = arg2; }
+    fn LabeledStatement(LoopStatement: *Node) *Node {}
+    fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
+    fn LabeledStatement(BlockExpr: *Node) *Node {}
 
-    // Assignment
-    fn AssignStatement(OpChain: *Node.Chain, AssignOp: *Token, Expr: *Node, Semicolon: *Token) *Node {
-        const node = try allocator.create(Node.Assignment);
-        node.* = Node.Assignment{ .lhs = &arg1.base, .token = arg2, .rhs = arg3, };
-        result = &node.base;
-    }
+    fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
+    fn LoopStatement(MaybeInline: ?*Token, WhileStatement: *Node) *Node {}
 
-    // OpChain
-    fn OpChain(Identifier: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Identifier);
-        node.* = Node.Identifier{ .token = arg1, };
+    fn ForStatement(ForPrefix: *Node, BlockExpr: *Node) *Node {}
+    fn ForStatement(ForPrefix: *Node, BlockExpr: *Node, ElseNoPayloadStatement: *Node) *Node {}
+    fn ForStatement(ForPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn ForStatement(ForPrefix: *Node, AssignExpr: *Node, ElseNoPayloadStatement: *Node) *Node {}
+    fn ElseNoPayloadStatement(Keyword_else: *Token, Statement: *Node) *Node {}
 
-        const chain = try allocator.create(Node.Chain);
-        chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
-        try chain.parts.append(node);
-        
-        result = chain;
-    }
-    fn OpChain(BuiltinCall: *Node) *Node.Chain {
-        const chain = try allocator.create(Node.Chain);
-        chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
-        try chain.parts.append(arg1);
-        
-        result = chain;
-    }
-    fn OpChain(LParen: *Token, OpChain: *Node.Chain, RParen: *Token) *Node.Chain {
-        if(arg2.parts.len > 1) {
-            const chain = try allocator.create(Node.Chain);
-            chain.* = Node.Chain{ .parts = Node.NodeList.init(allocator), };
-            try chain.parts.append(&arg2.base);
-            result = chain;
-        }
-        else {
-            return arg2;
-        }
-    }
-    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .rbracket = arg4, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .rbracket = arg5, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Slice);
-        node.* = Node.Slice{ .lbracket = arg2, .begin = arg3, .ellipsis = arg4, .end = arg5, .rbracket = arg6, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, FnCallArgs: *Node) *Node.Chain {
-        try arg1.parts.append(arg2);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, Period: *Token, Identifier: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Identifier);
-        node.* = Node.Identifier{ .token = arg2, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, Period: *Token, QuestionMark: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Unwrap);
-        node.* = Node.Unwrap{ .token = arg3, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
-    fn OpChain(OpChain: *Node.Chain, Period: *Token, Asterisk: *Token) *Node.Chain {
-        const node = try allocator.create(Node.Deref);
-        node.* = Node.Deref{ .token = arg3, };
-        try arg1.parts.append(&node.base);
-        result = arg1;
-    }
+    fn WhileStatement(WhilePrefix: *Node, BlockExpr: *Node) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
 
-    // Builtin calls
-    fn BuiltinCall(Builtin: *Token, Identifier: *Token, FnCallArgs: *Node) *Node {
-        const node = try allocator.create(Node.BuiltinCall);
-        node.* = Node.BuiltinCall{ .token = arg1, .identifier = arg2, .arguments = arg3, };
-        result = &node.base;
-    }
+    fn BlockExprStatement(BlockExpr: *Node) *Node {}
+    fn BlockExprStatement(Statement: *Node) *Node {}
 
-    // Call arguments
-    fn FnCallArgs(LParen: *Token, RParen: *Token) *Node {
-        const node = try allocator.create(Node.Call);
-        node.* = Node.BuiltinCall{ .lparen = arg1, .rparen = arg2 };
-        result = &node.base;
-    }
-    fn FnCallArgs(LParen: *Token, Arguments: *NodeList, RParen: *Token) *Node {
-        const node = try allocator.create(Node.Call);
-        node.* = Node.BuiltinCall{ .lparen = arg1, .arguments = arg2, .rparen = arg3 };
-        result = &node.base;
-    }
+    fn BlockExpr(Block: *Node) *Node {}
+    fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
 
-    fn Arguments(Expr: *Node) *NodeList {
-        const node = (try allocator.create(Node.Arguments)).init(allocator);
-        try node.append(arg1);
-        result = node;
-    }
-    fn Arguments(TypeExpr: *Node) *NodeList {
-        const node = (try allocator.create(Node.Arguments)).init(allocator);
-        try node.append(arg1);
-        result = node;
-    }
-    fn Arguments(Arguments: *NodeList, Comma: *Token, Expr: *Node) *NodeList {
-        try arg1.append(arg3);
-        result = arg1;
-    }
-    fn Arguments(Arguments: *NodeList, Comma: *Token, TypeExpr: *Node) *NodeList {
-        try arg1.append(arg3);
-        result = arg1;
-    }
+    // Expression level
+    fn AssignExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node) *Node {}
 
-    // Labels
-    fn MaybeBlockLabel() ?*Node {
-        result = null;
-    }
-    fn MaybeBlockLabel(Identifier: *Token, Colon: *Token) ?*Node {
-        const node = try allocator.create(Node.BlockLabel);
-        node.* = Node.BlockLabel{ .identifier = arg1, .colon = arg2, };
-        result = &node.base;
-    }
+    fn Expr(BoolOrExpr: *Node) *Node {}
+    // Note: this should be deprecated
+    // fn Expr(Keyword_try: *Token, BoolOrExpr: *Node) *Node {}
 
-    fn MaybeBreakLabel() ?*Node {
-        result = null;
-    }
-    fn MaybeBreakLabel(Colon: *Token, Identifier: *Token) ?*Node {
-        const node = try allocator.create(Node.BreakLabel);
-        node.* = Node.BreakLabel{ .colon = arg1, .identifier = arg2, };
-        result = &node.base;
-    }
+    fn BoolOrExpr(BoolAndExpr: *Node) *Node {}
+    fn BoolOrExpr(BoolOrExpr: *Node, Keyword_or: *Token, BoolAndExpr: *Node) *Node {}
+    
+    fn BoolAndExpr(BoolCompareExpr: *Node) *Node {}
+    fn BoolAndExpr(BoolAndExpr: *Node, Keyword_and: *Token, BoolCompareExpr: *Node) *Node {}
 
-    // Expressions
-    fn MaybeExpr() ?*Node {
-        result = null;
-    }
-    fn MaybeExpr(Expr: *Node) ?*Node {
-        result = arg1;
-    }
+    fn BoolCompareExpr(BitwiseExpr: *Node) *Node {}
+    fn BoolCompareExpr(BoolCompareExpr: *Node, CompareOp: *Token, BitwiseExpr: *Node) *Node {}
 
-    fn Expr(BlockExpr: *Node) *Node { result = arg1; }
-    fn Expr(Literal: *Node) *Node { result = arg1; }
-    fn Expr(OpChain: *Node.Chain) *Node { result = &arg1.base; }
-    fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node { result = arg2; }
-    fn Expr(Keyword_unreachable: *Token) *Node {
-        const node = try allocator.create(Node.Unreachable);
-        node.* = Node.Unreachable{ .token = arg1 };
-        result = &node.base;
-    }
+    fn BitwiseExpr(BitShiftExpr: *Node) *Node {}
+    fn BitwiseExpr(BitwiseExpr: *Node, BitwiseOp: *Token, BitShiftExpr: *Node) *Node {}
+    fn BitwiseExpr(BitwiseExpr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, BitShiftExpr: *Node) *Node {}
 
-    // Type expressions
-    fn TypeExpr(QuestionMark: *Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(Asterisk: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(AsteriskAsterisk: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(BracketStarBracket: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(BracketStarCBracket: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token, TypeExpr: *Node) *Node {}
+    fn BitShiftExpr(AdditionExpr: *Node) *Node {}
+    fn BitShiftExpr(BitShiftExpr: *Node, BitShiftOp: *Token, AdditionExpr: *Node) *Node {}
 
-    fn MaybeAlign() ?*Node { result = null; }
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, AlignExpr: *Node.Align, RParen: *Token) *Node {
-        // AlignExpr is little weird due to a parsing conflict on `:` between BlockExpr and Align
-        arg3.token = arg1;
-        arg3.lparen = arg2;
-        arg3.rparen = arg4;
-        result = &arg3.base;
-    }
+    fn AdditionExpr(MultiplyExpr: *Node) *Node {}
+    fn AdditionExpr(AdditionExpr: *Node, AdditionOp: *Token, MultiplyExpr: *Node) *Node {}
 
-    fn AlignExpr(Expr: *Node) *Node.Align {
-        const node = try allocator.create(Node.Align);
-        const fake = @ptrCast(*Token, arg1);
-        node.* = Node.Align{ .token = fake, .lparen = fake, .value = arg1, .rparen = fake };
-        result = node;
-    }
-    fn AlignExpr(LParen: *Token, Expr: *Node, RParen: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
-        const sub1 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg5 };
-        const sub2 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg7 };
-        const node = try allocator.create(Node.Align);
-        const fake = arg1;
-        node.* = Node.Align{ .token = fake, .lparen = fake, .value = arg2, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
-        result = node;
-    }
-    fn AlignExpr(Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
-        const value = try allocator.create(Node.Identifier);
-        value.* = Node.Identifier{ .token = arg1 };
-        const sub1 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg3 };
-        const sub2 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg5 };
-        const node = try allocator.create(Node.Align);
-        const fake = arg1;
-        node.* = Node.Align{ .token = fake, .lparen = fake, .value = value, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
-        result = node;
-    }
-    fn AlignExpr(IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token) *Node {
-        const value = try allocator.create(Node.IntegerLiteral);
-        value.* = Node.IntegerLiteral{ .token = arg1 };
-        const sub1 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg3 };
-        const sub2 = try allocator.create(Node.IntegerLiteral);
-        sub1.* = Node.IntegerLiteral{ .token = arg5 };
-        const node = try allocator.create(Node.Align);
-        const fake = arg1;
-        node.* = Node.Align{ .token = fake, .lparen = fake, .value = value, .bit_start = sub1, .bit_end = sub2, .rparen = fake };
-        result = node;
-    }
+    fn MultiplyExpr(PrefixExpr: *Node) *Node {}
+    fn MultiplyExpr(MultiplyExpr: *Node, MultiplyOp: *Token, PrefixExpr: *Node) *Node {}
 
-    fn MaybeConst() ?*Token { result = null; }
-    fn MaybeConst(Keyword_const: *Token) ?*Token { result = arg1; }
+    fn PrefixExpr(PrefixOp: *Token, PrefixExpr: *Node) *Node {}
+    fn PrefixExpr(PrimaryExpr: *Node) *Node {}
 
-    fn MaybeVolatile() ?*Token { result = null; }
-    fn MaybeVolatile(Keyword_volatile: *Token) ?*Token { result = arg1; }
+    fn PrimaryExpr(AsmExpr: *Node) *Node {}
+    // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
+    // fn PrimaryExpr(IfExpr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_resume: *Token, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_cancel: *Token, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, MaybeBreakLabel: ?*Node, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_continue: *Token) *Node {}
+    fn PrimaryExpr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
+    fn PrimaryExpr(Keyword_return: *Token) *Node {}
+    fn PrimaryExpr(Keyword_return: *Token, Expr: *Node) *Node {}
 
-    fn MaybeAllowzero() ?*Token { result = null; }
-    fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token { result = arg1; }
+    // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
+    // Note: this makes no sense as TypeExpr already implements BlockExpr
+    // fn PrimaryExpr(Block: *Node) *Node {}
+    fn PrimaryExpr(LoopExpr: *Node) *Node {}
+    fn PrimaryExpr(BlockLabel: *Token, LoopExpr: *Node) *Node {}
+    fn PrimaryExpr(CurlySuffixExpr: *Node) *Node {}
 
-    // Literals
-    fn Literal(IntegerLiteral: *Token) *Node {
-        const node = try allocator.create(Node.IntegerLiteral);
-        node.* = Node.IntegerLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
+    fn IfExpr(IfPrefix: *Node, Expr: *Node, ElseExpr: *Node) *Node {}
+    fn ElseExpr(Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {}
 
-    fn Literal(FloatLiteral: *Token) *Node {
-        const node = try allocator.create(Node.FloatLiteral);
-        node.* = Node.FloatLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    fn Block(LBrace: *Token, MaybeStatements: ?*Node, RBrace: *Token) *Node {}
 
-    fn Literal(EnumLiteral: *Token) *Node {
-        const node = try allocator.create(Node.EnumLiteral);
-        node.* = Node.EnumLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    // Note: LoopExpr should be deprecated
 
-    fn Literal(StringLiteral: *Token) *Node {
-        const node = try allocator.create(Node.StringLiteral);
-        node.* = Node.StringLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    fn CurlySuffixExpr(TypeExpr: *Node) *Node {}
+    fn CurlySuffixExpr(TypeExpr: *Node, InitList: *Node) *Node {}
 
-    fn Literal(MultilineStringLiterals: *Node) *Node {
-        result = arg1;
-    }
+    // Initializer list
+    fn InitList(LBrace: *Token, RBrace: *Token) *Node {}
+    fn InitList(LBrace: *Token, FieldInits: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+    fn InitList(LBrace: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
 
-    fn Literal(CharLiteral: *Token) *Node {
-        const node = try allocator.create(Node.CharLiteral);
-        node.* = Node.CharLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    fn TypeExpr(PrefixTypeOps: *Node, ErrorUnionExpr: *Node) *Node {}
+    fn TypeExpr(ErrorUnionExpr: *Node) *Node {}
 
-    fn Literal(Keyword_true: *Token) *Node {
-        const node = try allocator.create(Node.BoolLiteral);
-        node.* = Node.BoolLiteral{ .token = arg1, .is_true = true };
-        result = &node.base;
-    }
+    fn ErrorUnionExpr(SuffixExpr: *Node) *Node {}
+    fn ErrorUnionExpr(SuffixExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node {}
 
-    fn Literal(Keyword_false: *Token) *Node {
-        const node = try allocator.create(Node.BoolLiteral);
-        node.* = Node.BoolLiteral{ .token = arg1, .is_true = false };
-        result = &node.base;
-    }
+    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
+    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *Node, FnCallArguments: *Node) *Node {}
+    fn SuffixExpr(PrimaryTypeExpr: *Node) *Node {}
+    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsOrFnCallArguments: *Node) *Node {}
 
-    fn Literal(Keyword_null: *Token) *Node {
-        const node = try allocator.create(Node.NullLiteral);
-        node.* = Node.NullLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    fn PrimaryTypeExpr(Builtin: *Token, Identifier: *Token, FnCallArguments: *Node) *Node {}
+    fn PrimaryTypeExpr(CharLiteral: *Token) *Node {}
+    fn PrimaryTypeExpr(ContainerDecl: *Node) *Node {}
+    fn PrimaryTypeExpr(Period: *Token, Identifier: *Token) *Node {}
+    fn PrimaryTypeExpr(ErrorSetDecl: *Node) *Node {}
+    fn PrimaryTypeExpr(FloatLiteral: *Token) *Node {}
+    fn PrimaryTypeExpr(FnProto: *Node) *Node {}
+    fn PrimaryTypeExpr(GroupedExpr: *Node) *Node {}
+    // Note: LabeledTypeExpr should be replaced with BlockExpr
+    fn PrimaryTypeExpr(BlockExpr: Shadow(*Node)) *Node {}
+    fn PrimaryTypeExpr(Identifier: *Token) *Node {}
+    // Note: IfExpr and IfTypeExpr were combined to avoid conflicts
+    fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(IntegerLiteral: *Token) *Node {}
+    // fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
+    fn PrimaryTypeExpr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_false: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_null: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_promise: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_true: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_undefined: *Token) *Node {}
+    fn PrimaryTypeExpr(Keyword_unreachable: *Token) *Node {}
+    fn PrimaryTypeExpr(StringLiteral: *Token) *Node {}
+    fn PrimaryTypeExpr(MultilineStringLiteral: *NodeList) *Node {}
+    fn PrimaryTypeExpr(MultilineCStringLiteral: *NodeList) *Node {}
+    fn PrimaryTypeExpr(SwitchExpr: Shadow(*Node)) *Node {}
 
-    fn Literal(Keyword_undefined: *Token) *Node {
-        const node = try allocator.create(Node.UndefinedLiteral);
-        node.* = Node.UndefinedLiteral{ .token = arg1 };
-        result = &node.base;
-    }
+    // Note: ContainerDeclAuto has been inlined
+    fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
+    fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
 
-    fn MultilineStringLiterals(MultilineStringLiteral: *Token) *Node {
-        const node = try allocator.create(Node.MultilineStringLiteral);
-        node.* = Node.MultilineStringLiteral{ .tokens = Node.TokenList.init(allocator) };
-        try node.tokens.append(arg1);
-        result = &node.base;
-    }
-    fn MultilineStringLiterals(MultilineStringLiteral: *Node, MultilineStringLiteral: *Token) *Node {
-        try arg1.tokens.append(arg2);
-        result = &arg1.base;
-    }
+    // ContainerDecl helper
+    fn MaybeExternPacked() ?*Token {}
+    fn MaybeExternPacked(Keyword_extern: *Token) ?*Token {}
+    fn MaybeExternPacked(Keyword_packed: *Token) ?*Token {}
+
+    fn ErrorSetDecl(Keyword_error: *Token, LBrace: *Token, RBrace: *Token) *Node {}
+    fn ErrorSetDecl(Keyword_error: *Token, LBrace: *Token, IdentifierList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+
+    fn GroupedExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+
+    // Note: LabeledTypeExpr has been deprecated
+
+    fn SwitchExpr(Keyword_switch: *Token, LParen: *Token, Expr: *Node, RParen: *Token, LBrace: *Token, SwitchProngList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+
+    // Assembly
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, RParen: *Token) *Node {}
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, AsmOuput: *Node, RParen: *Token) *Node {}
+
+    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) *Node {}
+    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList, AsmInput: *Node) *Node {}
+    fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {}
+
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {}
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+
+    fn AsmInput(Colon: *Token, AsmInputList: *NodeList) *Node {}
+    fn AsmInput(Colon: *Token, AsmInputList: *NodeList, AsmClobber: *Node) *Node {}
+    fn AsmInput(Colon: *Token, AsmClobber: *Node) *Node {}
+
+    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+
+    fn AsmClobber(Colon: *Token) *Node {}
+    fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {}
+
+    // Helper grammar
+    fn MaybeBreakLabel() ?*Token {}
+    fn MaybeBreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
+
+    fn BlockLabel(Identifier: *Token, Colon: *Token) *Token {}
+
+    fn FieldInits(FieldInit: *Node) *NodeList {}
+    fn FieldInits(FieldInits: *NodeList, Comma: *Token, FieldInit: *Node) *NodeList {}
+
+    fn FieldInit(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *Node {}
+
+    fn WhileContinueExpr(Colon: *Token, LParen: *Token, AssignExpr: *Node, RParen: *Token) *Node {}
+
+    fn MaybeLinkSection() ?*Node {}
+    fn MaybeLinkSection(Keyword_linksection: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
+
+    // Function specific
+    fn MaybeFnCC() ?*Token {}
+    fn MaybeFnCC(Keyword_nakedcc: *Token) ?*Token {}
+    fn MaybeFnCC(Keyword_stdcallcc: *Token) ?*Token {}
+    fn MaybeFnCC(Keyword_extern: *Token) ?*Token {}
+
+    fn ParamDecl(MaybeNoaliasComptime: ?*Token, ParamType: *Node) *Node {}
+    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
+
+    fn ParamType(Keyword_var: *Token) *Node {}
+    fn ParamType(Keyword_ellipsis3: *Token) *Node {}
+    fn ParamType(TypeExpr: *Node) *Node {}
+
+    // Control flow prefixes
+    fn IfPrefix(Keyword_if: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node {}
+
+    fn ForPrefix(Keyword_for: *Token, LParen: *Token, Expr: *Node, RParen: *Token, PtrIndexPayload: *Node) *Node {}
+    fn WhilePrefix(Keyword_while: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node {}
+    fn WhilePrefix(Keyword_while: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node, WhileContinueExpr: *Node) *Node {}
+
+    // Payloads
+    fn MaybePayload() ?*Node {}
+    fn MaybePayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+
+    fn MaybePtrPayload() ?*Node {}
+    fn MaybePtrPayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn MaybePtrPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+
+    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+
+    // Switch specific
+    fn SwitchProng(SwitchCase: *Node, EqualAngleBracketRight: *Token, MaybePtrPayload: ?*Node, AssignExpr: *Node) *Node {}
+
+    fn SwitchCase(Keyword_else: *Token) *Node {}
+    fn SwitchCase(SwitchItems: *NodeList, MaybeComma: ?*Token) *Node {}
+
+    fn SwitchItems(SwitchItem: *Node) *NodeList {}
+    fn SwitchItems(SwitchItems: *NodeList, Comma: *Token, SwitchItem: *Node) *NodeList {}
+
+    fn SwitchItem(Expr: *Node) *Node {}
+    fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {}
 
     // Operators
-    fn AssignOp(AsteriskEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(SlashEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(PercentEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(MinusEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(AmpersandEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(CaretEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(PipeEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(AsteriskPercentEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(PlusPercentEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(MinusPercentEqual: *Token) *Token { result = arg1; }
-    fn AssignOp(Equal: *Token) *Token { result = arg1; }
+    fn AssignOp(AsteriskEqual: *Token) *Token {}
+    fn AssignOp(SlashEqual: *Token) *Token {}
+    fn AssignOp(PercentEqual: *Token) *Token {}
+    fn AssignOp(PlusEqual: *Token) *Token {}
+    fn AssignOp(MinusEqual: *Token) *Token {}
+    fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token {}
+    fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token {}
+    fn AssignOp(AmpersandEqual: *Token) *Token {}
+    fn AssignOp(CaretEqual: *Token) *Token {}
+    fn AssignOp(PipeEqual: *Token) *Token {}
+    fn AssignOp(AsteriskPercentEqual: *Token) *Token {}
+    fn AssignOp(PlusPercentEqual: *Token) *Token {}
+    fn AssignOp(MinusPercentEqual: *Token) *Token {}
+    fn AssignOp(Equal: *Token) *Token {}
 
-    fn CompareOp(EqualEqual: *Token) *Token { result = arg1; }
-    fn CompareOp(BangEqual: *Token) *Token { result = arg1; }
-    fn CompareOp(AngleBracketLeft: *Token) *Token { result = arg1; }
-    fn CompareOp(AngleBracketRight: *Token) *Token { result = arg1; }
-    fn CompareOp(AngleBracketLeftEqual: *Token) *Token { result = arg1; }
-    fn CompareOp(AngleBracketRightEqual: *Token) *Token { result = arg1; }
+    fn CompareOp(EqualEqual: *Token) *Token {}
+    fn CompareOp(BangEqual: *Token) *Token {}
+    fn CompareOp(AngleBracketLeft: *Token) *Token {}
+    fn CompareOp(AngleBracketRight: *Token) *Token {}
+    fn CompareOp(AngleBracketLeftEqual: *Token) *Token {}
+    fn CompareOp(AngleBracketRightEqual: *Token) *Token {}
 
-    fn BitwiseOp(Ampersand: *Token) *Token { result = arg1; }
-    fn BitwiseOp(Caret: *Token) *Token { result = arg1; }
-    fn BitwiseOp(Keyword_orelse: *Token) *Token { result = arg1; }
-    fn BitwiseOp(Keyword_catch: *Token) *Token { result = arg1; }
+    fn BitwiseOp(Ampersand: *Token) *Token {}
+    fn BitwiseOp(Caret: *Token) *Token {}
+    fn BitwiseOp(Keyword_orelse: *Token) *Token {}
+    // Note: Keyword_catch is handled separately
+    // fn BitwiseOp(Keyword_catch: *Token) *Token {}
 
-    fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token { result = arg1; }
-    fn BitShiftOp(AngleBracketAngleBracketRight: *Token) *Token { result = arg1; }
+    fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token {}
+    fn BitShiftOp(AngleBracketAngleBracketRight: *Token) *Token {}
 
-    fn AdditionOp(Plus: *Token) *Token { result = arg1; }
-    fn AdditionOp(Minus: *Token) *Token { result = arg1; }
-    fn AdditionOp(PlusPlus: *Token) *Token { result = arg1; }
-    fn AdditionOp(PlusPercent: *Token) *Token { result = arg1; }
-    fn AdditionOp(MinusPercent: *Token) *Token { result = arg1; }
+    fn AdditionOp(Plus: *Token) *Token {}
+    fn AdditionOp(Minus: *Token) *Token {}
+    fn AdditionOp(PlusPlus: *Token) *Token {}
+    fn AdditionOp(PlusPercent: *Token) *Token {}
+    fn AdditionOp(MinusPercent: *Token) *Token {}
 
-    fn MultiplyOp(PipePipe: *Token) *Token { result = arg1; }
-    fn MultiplyOp(Asterisk: *Token) *Token { result = arg1; }
-    fn MultiplyOp(Slash: *Token) *Token { result = arg1; }
-    fn MultiplyOp(Percent: *Token) *Token { result = arg1; }
-    fn MultiplyOp(AsteriskAsterisk: *Token) *Token { result = arg1; }
-    fn MultiplyOp(AsteriskPercent: *Token) *Token { result = arg1; }
+    fn MultiplyOp(PipePipe: *Token) *Token {}
+    fn MultiplyOp(Asterisk: *Token) *Token {}
+    fn MultiplyOp(Slash: *Token) *Token {}
+    fn MultiplyOp(Percent: *Token) *Token {}
+    fn MultiplyOp(AsteriskAsterisk: *Token) *Token {}
+    fn MultiplyOp(AsteriskPercent: *Token) *Token {}
+
+    fn PrefixOp(Bang: *Token) *Token {}
+    fn PrefixOp(Minus: *Token) *Token {}
+    fn PrefixOp(Tilde: *Token) *Token {}
+    fn PrefixOp(MinusPercent: *Token) *Token {}
+    fn PrefixOp(Ampersand: *Token) *Token {}
+    fn PrefixOp(Keyword_try: *Token) *Token {}
+    fn PrefixOp(Keyword_await: *Token) *Token {}
+
+    fn PrefixTypeOps(PrefixTypeOp: *Node) *Node {}
+    fn PrefixTypeOps(PrefixTypeOps: *Node, PrefixTypeOp: *Node) *Node {}
+
+    fn PrefixTypeOp(QuestionMark: *Token) *Node {}
+    fn PrefixTypeOp(Keyword_promise: *Token, MinusAngleBracketRight: *Token) *Node {}
+    fn PrefixTypeOp(ArrayTypeStart: *Node, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
+    fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
+
+    fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, SuffixOp: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, FnCallArguments: *Node) *Node {}
+
+    fn SuffixOps(SuffixOp: *Node) *Node {}
+    fn SuffixOps(SuffixOps: *Node, SuffixOp: *Node) *Node {}
+
+    fn SuffixOp(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn SuffixOp(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
+    fn SuffixOp(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn SuffixOp(Period: *Token, Identifier: *Token) *Node {}
+    fn SuffixOp(Period: *Token, Asterisk: *Token) *Node {}
+    fn SuffixOp(Period: *Token, QuestionMark: *Token) *Node {}
+
+    fn AsyncPrefix(Keyword_async: *Token) *Node {}
+    fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, PrefixExpr: *Node, AngleBracketRight: *Token) *Node {}
+
+    fn FnCallArguments(LParen: *Token, RParen: *Token) *Node {}
+    fn FnCallArguments(LParen: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RParen: *Token) *Node {}
+
+    // Ptr specific
+    fn ArrayTypeStart(LBracket: *Token, RBracket: *Token) *Node {}
+    fn ArrayTypeStart(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+
+    fn PtrTypeStart(Asterisk: *Token) *Token {}
+    fn PtrTypeStart(AsteriskAsterisk: *Token) *Token {}
+    fn PtrTypeStart(BracketStarBracket: *Token) *Token {}
+    fn PtrTypeStart(BracketStarCBracket: *Token) *Token {}
+
+    fn MaybeVolatile() ?*Token {}
+    fn MaybeVolatile(Keyword_volatile: *Token) ?*Token {}
+
+    fn MaybeAllowzero() ?*Token {}
+    fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token {}
+
+    // ContainerDecl specific
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+
+    fn ContainerDeclOp(Keyword_struct: *Token) *Token {}
+    fn ContainerDeclOp(Keyword_union: *Token) *Token {}
+    fn ContainerDeclOp(Keyword_enum: *Token) *Token {}
+
+    // Alignment
+    fn MaybeByteAlign() ?*Node {}
+    fn MaybeByteAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
+    
+    fn MaybeAlign() *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
+
+    // Lists
+    fn IdentifierList(Identifier: *Token) *NodeList {}
+    fn IdentifierList(IdentifierList: *NodeList, Comma: *Token, Identifier: *Token) *NodeList {}
+
+    fn SwitchProngList(SwitchProng: *Node) *NodeList {}
+    fn SwitchProngList(SwitchProngList: *NodeList, Comma: *Token, SwitchProng: *Node) *NodeList {}
+
+    fn AsmOutputList(AsmOutputItem: *Node) *NodeList {}
+    fn AsmOutputList(AsmOutputList: *NodeList, Comma: *Token, AsmOutputItem: *Node) *NodeList {}
+
+    fn AsmInputList(AsmInputItem: *Node) *Node {}
+    fn AsmInputList(AsmInputList: *NodeList, Comma: *Token, AsmInputItem: *Node) *NodeList {}
+
+    fn StringList(StringLiteral: *Token) *NodeList {}
+    fn StringList(StringList: *NodeList, Comma: *Token, StringLiteral: *Token) *NodeList {}
+
+    fn MaybeParamDeclList() ?*NodeList {}
+    fn MaybeParamDeclList(ParamDeclList: *NodeList, MaybeComma: ?*Token) *NodeList {}
+
+    fn ParamDeclList(ParamDecl: *Node) *NodeList {}
+    fn ParamDeclList(ParamDeclList: *NodeList, Comma: *Token, ParamDecl: *Node) *NodeList {}
+
+    fn ExprList(Expr: *Node) *Node {}
+    fn ExprList(ExprList: *Node, Comma: *Token, Expr: *Node) *Node {}
+
+    // Various helpers
+    fn MaybePub() ?*Token {}
+    fn MaybePub(Keyword_pub: *Token) ?*Token {}
+
+    fn MaybeColonTypeExpr() ?*Node {}
+    fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {}
+
+    fn MaybeExpr() ?*Node {}
+    fn MaybeExpr(Expr: *Node) ?*Node {}
+
+    fn MaybeEqualExpr() ?*Node {}
+    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
+
+    fn MaybeBang() ?*Token {}
+    fn MaybeBang(Bang: *Token) ?*Token {}
+
+    fn MaybeNoaliasComptime() ?*Token {}
+    fn MaybeNoaliasComptime(Keyword_noalias: *Token) ?*Token {}
+    fn MaybeNoaliasComptime(Keyword_comptime: *Token) ?*Token {}
+
+    fn MaybeInline() ?*Token {}
+    fn MaybeInline(Keyword_inline: *Token) ?*Token {}
+
+    fn MaybeIdentifier() ?*Token {}
+    fn MaybeIdentifier(Identifier: *Token) ?*Token {}
+
+    fn MaybeComma() ?*Token {}
+    fn MaybeComma(Comma: *Token) ?*Token {}
+
+    fn MaybeConst() ?*Token {}
+    fn MaybeConst(Keyword_const: *Token) ?*Token {}
+
+    fn SemicolonOrBlock(Semicolon: *Token) ?*Node {}
+    fn SemicolonOrBlock(Block: *Node) ?*Node {}
+
+    fn MultilineStringLiteral(LineString: *Token) *NodeList {}
+    fn MultilineStringLiteral(MultilineStringLiteral: *NodeList, LineString: *Token) *NodeList {}
+
+    fn MultilineCStringLiteral(LineCString: *Token) *NodeList {}
+    fn MultilineCStringLiteral(MultilineCStringLiteral: *NodeList, LineCString: *Token) *NodeList {}
 };
