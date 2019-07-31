@@ -1,5 +1,6 @@
-pub extern "LALR" const ZigGrammar = struct {
-    fn Root(ContainerMembers: *Node) *Node {}
+pub extern "LALR" const zig_grammar = struct {
+    fn Root() ?*Node {}
+    fn Root(ContainerMembers: *Node) ?*Node {}
 
     // DocComments
     fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
@@ -20,7 +21,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
     // TODO: create fix to enable final ContainerField without Comma
-    fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, RBrace: Noconsume(*Token)) *Node {}
+    // fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, RBrace: Noconsume(*Token)) *Node {}
 
     // Test
     fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node {}
@@ -84,20 +85,14 @@ pub extern "LALR" const ZigGrammar = struct {
     fn Statement(SwitchExpr: *Node) *Node {}
     fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
-    // Note: these are expressions but should be statements
-    fn Statement(Keyword_resume: *Token, Expr: *Node, Semicolon: *Token) *Node {}
-    fn Statement(Keyword_cancel: *Token, Expr: *Node, Semicolon: *Token) *Node {}
-    fn Statement(Keyword_break: *Token, MaybeBreakLabel: ?*Node, MaybeExpr: ?*Node, Semicolon: *Token) *Node {}
-    fn Statement(Keyword_continue: *Token, MaybeBreakLabel: ?*Node, Semicolon: *Token) *Node {}
-    fn Statement(Keyword_return: *Token, MaybeExpr: ?*Node, Semicolon: *Token) *Node {}
-
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
     fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
     fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node {}
 
-    fn LabeledStatement(BlockExpr: *Node, LoopStatement: *Node) *Node {}
+    fn LabeledStatement(LoopStatement: *Node) *Node {}
+    fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
     fn LabeledStatement(BlockExpr: *Node) *Node {}
 
     fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
@@ -115,7 +110,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
 
     fn BlockExprStatement(BlockExpr: *Node) *Node {}
-    fn BlockExprStatement(Statement: *Node, Semicolon: *Token) *Node {}
+    fn BlockExprStatement(Statement: *Node) *Node {}
 
     fn BlockExpr(Block: *Node) *Node {}
     fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
@@ -156,7 +151,16 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrimaryExpr(AsmExpr: *Node) *Node {}
     // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
     // fn PrimaryExpr(IfExpr: *Node) *Node {}
-    // Note: break, cancel, continue, resume, return should be statements
+    fn PrimaryExpr(Keyword_resume: *Token, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_cancel: *Token, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, MaybeBreakLabel: ?*Node, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_continue: *Token) *Node {}
+    fn PrimaryExpr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
+    fn PrimaryExpr(Keyword_return: *Token) *Node {}
+    fn PrimaryExpr(Keyword_return: *Token, Expr: *Node) *Node {}
+
     // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     // Note: this makes no sense as TypeExpr already implements BlockExpr
     // fn PrimaryExpr(Block: *Node) *Node {}
@@ -189,8 +193,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
     fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *Node, FnCallArguments: *Node) *Node {}
     fn SuffixExpr(PrimaryTypeExpr: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOps: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
+    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsOrFnCallArguments: *Node) *Node {}
 
     fn PrimaryTypeExpr(Builtin: *Token, Identifier: *Token, FnCallArguments: *Node) *Node {}
     fn PrimaryTypeExpr(CharLiteral: *Token) *Node {}
@@ -216,6 +219,8 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrimaryTypeExpr(Keyword_undefined: *Token) *Node {}
     fn PrimaryTypeExpr(Keyword_unreachable: *Token) *Node {}
     fn PrimaryTypeExpr(StringLiteral: *Token) *Node {}
+    fn PrimaryTypeExpr(MultilineStringLiteral: *NodeList) *Node {}
+    fn PrimaryTypeExpr(MultilineCStringLiteral: *NodeList) *Node {}
     fn PrimaryTypeExpr(SwitchExpr: *Node) *Node {}
 
     // Note: ContainerDeclAuto has been inlined
@@ -258,7 +263,8 @@ pub extern "LALR" const ZigGrammar = struct {
     fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {}
 
     // Helper grammar
-    fn BreakLabel(Colon: *Token, Identifier: *Token) *Token {}
+    fn MaybeBreakLabel() ?*Token {}
+    fn MaybeBreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
 
     fn BlockLabel(Identifier: *Token, Colon: *Token) *Token {}
 
@@ -279,7 +285,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn MaybeFnCC(Keyword_extern: *Token) ?*Token {}
 
     fn ParamDecl(MaybeNoaliasComptime: ?*Token, ParamType: *Node) *Node {}
-    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifer: *Token, Colon: *Token, ParamType: *Node) *Node {}
+    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
 
     fn ParamType(Keyword_var: *Token) *Node {}
     fn ParamType(Keyword_ellipsis3: *Token) *Node {}
@@ -306,7 +312,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
 
     // Switch specific
-    fn SwitchProng(SwitchCase: *Node, EqualAngleBracketRight: *Token, MaybePtrPayload: ?*Node, Expr: *Node) *Node {}
+    fn SwitchProng(SwitchCase: *Node, EqualAngleBracketRight: *Token, MaybePtrPayload: ?*Node, AssignExpr: *Node) *Node {}
 
     fn SwitchCase(Keyword_else: *Token) *Node {}
     fn SwitchCase(SwitchItems: *NodeList, MaybeComma: ?*Token) *Node {}
@@ -321,6 +327,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn AssignOp(AsteriskEqual: *Token) *Token {}
     fn AssignOp(SlashEqual: *Token) *Token {}
     fn AssignOp(PercentEqual: *Token) *Token {}
+    fn AssignOp(PlusEqual: *Token) *Token {}
     fn AssignOp(MinusEqual: *Token) *Token {}
     fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token {}
     fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token {}
@@ -377,6 +384,11 @@ pub extern "LALR" const ZigGrammar = struct {
     fn PrefixTypeOp(ArrayTypeStart: *Node, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
     fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
 
+    fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, SuffixOp: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, FnCallArguments: *Node) *Node {}
+
     fn SuffixOps(SuffixOp: *Node) *Node {}
     fn SuffixOps(SuffixOps: *Node, SuffixOp: *Node) *Node {}
 
@@ -391,7 +403,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, PrefixExpr: *Node, AngleBracketRight: *Token) *Node {}
 
     fn FnCallArguments(LParen: *Token, RParen: *Token) *Node {}
-    fn FnCallArguments(LParen: *Token, ExprList: *NodeList, RParen: *Token) *Node {}
+    fn FnCallArguments(LParen: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RParen: *Token) *Node {}
 
     // Ptr specific
     fn ArrayTypeStart(LBracket: *Token, RBracket: *Token) *Node {}
@@ -423,7 +435,8 @@ pub extern "LALR" const ZigGrammar = struct {
     
     fn MaybeAlign() *Node {}
     fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, ColonColon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
 
     // Lists
     fn IdentifierList(Identifier: *Token) *NodeList {}
@@ -442,7 +455,7 @@ pub extern "LALR" const ZigGrammar = struct {
     fn StringList(StringList: *NodeList, Comma: *Token, StringLiteral: *Token) *NodeList {}
 
     fn MaybeParamDeclList() ?*NodeList {}
-    fn MaybeParamDeclList(ParamDeclList: *NodeList) *NodeList {}
+    fn MaybeParamDeclList(ParamDeclList: *NodeList, MaybeComma: ?*Token) *NodeList {}
 
     fn ParamDeclList(ParamDecl: *Node) *NodeList {}
     fn ParamDeclList(ParamDeclList: *NodeList, Comma: *Token, ParamDecl: *Node) *NodeList {}
@@ -457,8 +470,11 @@ pub extern "LALR" const ZigGrammar = struct {
     fn MaybeColonTypeExpr() ?*Node {}
     fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {}
 
+    fn MaybeExpr() ?*Node {}
+    fn MaybeExpr(Expr: *Node) ?*Node {}
+
     fn MaybeEqualExpr() ?*Node {}
-    fn MaybeEqualExpr(Equal: *Token, RExpr: *Node) ?*Node {}
+    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
 
     fn MaybeBang() ?*Token {}
     fn MaybeBang(Bang: *Token) ?*Token {}
@@ -468,7 +484,10 @@ pub extern "LALR" const ZigGrammar = struct {
     fn MaybeNoaliasComptime(Keyword_comptime: *Token) ?*Token {}
 
     fn MaybeInline() ?*Token {}
-    fn MaybeInline(Inline: *Token) ?*Token {}
+    fn MaybeInline(Keyword_inline: *Token) ?*Token {}
+
+    fn MaybeIdentifier() ?*Token {}
+    fn MaybeIdentifier(Identifier: *Token) ?*Token {}
 
     fn MaybeComma() ?*Token {}
     fn MaybeComma(Comma: *Token) ?*Token {}
@@ -478,4 +497,10 @@ pub extern "LALR" const ZigGrammar = struct {
 
     fn SemicolonOrBlock(Semicolon: *Token) ?*Node {}
     fn SemicolonOrBlock(Block: *Node) ?*Node {}
+
+    fn MultilineStringLiteral(LineString: *Token) *NodeList {}
+    fn MultilineStringLiteral(MultilineStringLiteral: *NodeList, LineString: *Token) *NodeList {}
+
+    fn MultilineCStringLiteral(LineCString: *Token) *NodeList {}
+    fn MultilineCStringLiteral(MultilineCStringLiteral: *NodeList, LineCString: *Token) *NodeList {}
 };

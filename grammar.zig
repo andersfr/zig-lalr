@@ -83,14 +83,14 @@ pub const Production = struct {
     }
 
     pub fn debugToFile(self: Self, grammar: *const Grammar, file: *std.fs.File.OutStream) !void {
-        try file.stream.print("{} ", varToStr(self.nullable));
-        try file.stream.print("{}[T{}] <-", self.terminal, self.terminal_id);
+        // try file.stream.print("{} ", varToStr(self.nullable));
+        try file.stream.print("{}[#{}] <-", self.terminal, self.terminal_id);
         for(self.symbol_ids) |id,i| {
             if(id >= grammar.epsilon_index) {
-                try file.stream.print(" {}[S{}]", self.symbols.at(i), id - grammar.epsilon_index);
+                try file.stream.print(" {}[{}]", self.symbols.at(i), id - grammar.epsilon_index);
             }
             else {
-                try file.stream.print(" {}[T{}]", self.symbols.at(i), id);
+                try file.stream.print(" {}[#{}]", self.symbols.at(i), id);
             }
         }
         try file.stream.write("\n");
@@ -135,6 +135,7 @@ pub const Grammar = struct {
     names_index_map: StringIndexMap(usize),
     epsilon_index: usize = 0,
     grammar_name: []const u8,
+    transitions: ArrayList([]i32),
 
     const Self = @This();
 
@@ -144,20 +145,31 @@ pub const Grammar = struct {
             .productions = ArrayList(*Production).init(allocator),
             .names_index_map = StringIndexMap(usize).init(allocator),
             .grammar_name = name,
+            .transitions = ArrayList([]i32).init(allocator),
             };
     }
 
     pub fn deinit(self: *Self) void {
         // Cleanup productions and free them
-        var it = self.productions.iterator();
-        while(it.next()) |production| {
-            production.deinit();
-            self.allocator.destroy(production);
+        {
+            var it = self.productions.iterator();
+            while(it.next()) |production| {
+                production.deinit();
+                self.allocator.destroy(production);
+            }
         }
         // Cleanup the list holding the productions
         self.productions.deinit();
         // Cleanup the index map
         self.names_index_map.deinit();
+        // Cleanup the transitions
+        {
+            var it = self.transitions.iterator();
+            while(it.next()) |transition| {
+                self.allocator.free(transition);
+            }
+            self.transitions.deinit();
+        }
     }
 
     pub fn append(self: *Self, production: *Production) !void {
@@ -215,14 +227,7 @@ pub const Grammar = struct {
         }
 
         // Build the isocore set
-        const transitions = try isocorePass(self, terminal_nullability, follow_sets);
-        errdefer {
-            var it = transitions.iterator();
-            while(it.next()) |transition| {
-                grammar.allocator.free(transition);
-            }
-            transitions.deinit();
-        }
+        self.transitions = try isocorePass(self, terminal_nullability, follow_sets);
     }
 
     pub fn terminalCount(self: Self) usize {
@@ -231,7 +236,9 @@ pub const Grammar = struct {
 
     pub fn debugToFile(self: *const Self, file: *std.fs.File.OutStream) !void {
         var it = self.productions.iterator();
-        while(it.next()) |production| {
+        var i: usize = 0;
+        while(it.next()) |production| : (i += 1) {
+            try file.stream.print("{}: ", i);
             try production.debugToFile(self, file);
         }
     }
@@ -707,6 +714,17 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
         isocores.deinit();
     }
 
+    // Fullcores holds all the full states that are being built
+    var fullcores = ArrayList(IsocorePairSet).init(grammar.allocator);
+    // Cleanup of self and its containing items
+    defer {
+        var it = fullcores.iterator();
+        while(it.next()) |*fullcore| {
+            fullcore.deinit();
+        }
+        fullcores.deinit();
+    }
+
     // Transitions holds the shift and goto transitions between isocore states
     var transitions = ArrayList([]i32).init(grammar.allocator);
     // Cleanup of self and its containing items
@@ -863,6 +881,8 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     var new_isocore_set = IsocorePairSet.init(grammar.allocator);
                     errdefer new_isocore_set.deinit();
 
+                    try new_isocore_set.reserve(transition_core.size);
+
                     var tcit = transition_core.iterator();
                     while(tcit.next()) |tckv| {
                         _ = try new_isocore_set.insert(tckv.key);
@@ -889,6 +909,22 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                 }
             }
 
+            // Build fullcore as a copy of the expansion core
+            {
+                // Initialize the accepting isocore set
+                var new_core_set = IsocorePairSet.init(grammar.allocator);
+                errdefer new_core_set.deinit();
+
+                try new_core_set.reserve(expansion_core.size);
+
+                var tcit = expansion_core.iterator();
+                while(tcit.next()) |tckv| {
+                    _ = try new_core_set.insert(tckv.key);
+                }
+
+                try fullcores.append(new_core_set);
+            }
+
            // warn("Expansion core {}:\n------------\n", current_isocore);
            // {
            //     var tcit = expansion_core.iterator();
@@ -906,6 +942,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
         warn("Isocore {}:\n------------\n", current_isocore);
         {
             var pit = isocores.at(current_isocore).iterator();
+            // var pit = fullcores.at(current_isocore).iterator();
             while(pit.next()) |kv| {
                 const pair = kv.key;
                 warn("{} ", pair.production_id);
@@ -914,7 +951,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
         }
         warn("\n");
         var has_conflicts: bool = false;
-        var iit = isocores.items[current_isocore].iterator();
+        var iit = fullcores.items[current_isocore].iterator();
         while(iit.next()) |kv| {
             const pair = kv.key;
             const production = grammar.productions.items[pair.production_id];
@@ -945,6 +982,9 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 has_conflicts = true;
                             }
                         }
+                        else {
+                            // warn("Resolved Shift-Reduce conflict\n");
+                        }
                     }
                     else {
                         const tkey = @bitCast(u32, -transition[key]); 
@@ -956,7 +996,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             else {
                                 const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
                                 if(resolve >= 0) {
-                                    // warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
+                                    warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
                                     transition[key] = -resolve;
                                 }
                                 else {
@@ -1008,6 +1048,11 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                         warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
                                         reduce_reduce_conflicts += 1;
                                         has_conflicts = true;
+                                    }
+                                    else {
+                                        warn("\x1b[31mNull-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
+                                        transition[key] = -@intCast(i32, null_production_id);
+                                        shift_reduce_conflicts += 1;
                                     }
                                 }
                             }
