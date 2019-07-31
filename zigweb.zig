@@ -204,7 +204,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryTypeExpr(FnProto: *Node) *Node {}
     fn PrimaryTypeExpr(GroupedExpr: *Node) *Node {}
     // Note: LabeledTypeExpr should be replaced with BlockExpr
-    fn PrimaryTypeExpr(BlockExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(BlockExpr: Shadow(*Node)) *Node {}
     fn PrimaryTypeExpr(Identifier: *Token) *Node {}
     // Note: IfExpr and IfTypeExpr were combined to avoid conflicts
     fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
@@ -221,7 +221,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryTypeExpr(StringLiteral: *Token) *Node {}
     fn PrimaryTypeExpr(MultilineStringLiteral: *NodeList) *Node {}
     fn PrimaryTypeExpr(MultilineCStringLiteral: *NodeList) *Node {}
-    fn PrimaryTypeExpr(SwitchExpr: *Node) *Node {}
+    fn PrimaryTypeExpr(SwitchExpr: Shadow(*Node)) *Node {}
 
     // Note: ContainerDeclAuto has been inlined
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
@@ -237,7 +237,6 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn GroupedExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
 
-    // Note: IfTypeExpr has been merged with IfExpr
     // Note: LabeledTypeExpr has been deprecated
 
     fn SwitchExpr(Keyword_switch: *Token, LParen: *Token, Expr: *Node, RParen: *Token, LBrace: *Token, SwitchProngList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}

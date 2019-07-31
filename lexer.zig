@@ -217,8 +217,6 @@ pub fn main() !void {
         parser.action(&token) catch { std.debug.warn("\nline: {}\n", line); return error.ParserError; };
         if(token.id == .Eof)
             break;
-
-        // std.debug.warn("{}\n", token.id);
     }
 }
 

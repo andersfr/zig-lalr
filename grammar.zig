@@ -34,6 +34,7 @@ pub const Production = struct {
     terminal_id: usize = 0,
     consumes: usize = 0,
     nullable: YesNoMaybe = .Maybe,
+    shadowed: bool = false,
 
     const Self = @This();
 
@@ -54,6 +55,9 @@ pub const Production = struct {
             if(std.mem.compare(u8, p, "Noconsume") == .Equal) {
                 assert(self.symbols.len > 0);
                 self.consumes = self.symbols.len;
+            }
+            if(std.mem.compare(u8, p, "Shadow") == .Equal) {
+                self.shadowed = true;
             }
         }
 
@@ -994,24 +998,18 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 transition[key] = -@intCast(i32, pair.production_id);
                             }
                             else {
-                                const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
-                                if(resolve >= 0) {
-                                    warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
-                                    transition[key] = -resolve;
+                                if(production.shadowed) {
+                                    // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                }
+                                else if(grammar.productions.items[tkey].shadowed) {
+                                    // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
+                                    transition[key] = -@intCast(i32, pair.production_id);
                                 }
                                 else {
-                                    // TODO: these are quite nasty fixes to a follow set problem
-                                    if(production.symbol_ids[pair.symbol_index-1] == grammar.names_index_map.indexOf("BlockExpr").?) {
-                                        const type_expr = production.terminal_id == grammar.names_index_map.indexOf("PrimaryTypeExpr").?;
-                                        const semicolon = key == grammar.names_index_map.indexOf("Semicolon").?;
-                                        const nkey = if((semicolon and type_expr) or !(semicolon or type_expr)) -@intCast(i32, pair.production_id) else transition[key];
-                                        transition[key] = nkey;
-                                    }
-                                    else if(production.symbol_ids[pair.symbol_index-1] == grammar.names_index_map.indexOf("SwitchExpr").?) {
-                                        const type_expr = production.terminal_id == grammar.names_index_map.indexOf("PrimaryTypeExpr").?;
-                                        const semicolon = key == grammar.names_index_map.indexOf("Semicolon").?;
-                                        const nkey = if((semicolon and type_expr) or !(semicolon or type_expr)) -@intCast(i32, pair.production_id) else transition[key];
-                                        transition[key] = nkey;
+                                    const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
+                                    if(resolve >= 0) {
+                                        warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
+                                        transition[key] = -resolve;
                                     }
                                     else {
                                         warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
@@ -1040,7 +1038,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             }
                             else if(transition[key] > 0) {
                                 // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
-                                warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
+                                // warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
                             }
                             else {
                                 if(transition[key] != -@intCast(i32, null_production_id)) {
