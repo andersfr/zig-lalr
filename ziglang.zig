@@ -225,6 +225,8 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryTypeExpr(SwitchExpr: Shadow(*Node)) *Node {}
 
     // Note: ContainerDeclAuto has been inlined
+    // fn ContainerDecl(ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
+    // fn ContainerDecl(ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
 

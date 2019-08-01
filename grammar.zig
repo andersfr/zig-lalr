@@ -959,7 +959,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
         while(iit.next()) |kv| {
             const pair = kv.key;
             const production = grammar.productions.items[pair.production_id];
-            const transition = transitions.at(current_isocore);
+            const transition = transitions.items[current_isocore];
 
             if(pair.symbol_index == production.symbol_ids.len) {
                 var fit = follow_sets[production.terminal_id].iterator();
@@ -993,65 +993,58 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     else {
                         const tkey = @bitCast(u32, -transition[key]); 
                         if(tkey != pair.production_id) {
-                            // Take precedence over a nullable production to resolve conflict
-                            if(grammar.productions.items[tkey].symbol_ids[0] == grammar.epsilon_index) {
+                            if(production.shadowed) {
+                                // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                            }
+                            else if(grammar.productions.items[tkey].shadowed) {
+                                // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
                                 transition[key] = -@intCast(i32, pair.production_id);
                             }
                             else {
-                                if(production.shadowed) {
-                                    // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
-                                }
-                                else if(grammar.productions.items[tkey].shadowed) {
-                                    // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
-                                    transition[key] = -@intCast(i32, pair.production_id);
+                                const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
+                                if(resolve >= 0) {
+                                    warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
+                                    transition[key] = -resolve;
                                 }
                                 else {
-                                    const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);
-                                    if(resolve >= 0) {
-                                        warn("\x1b[31mResolved Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), resolve);
-                                        transition[key] = -resolve;
-                                    }
-                                    else {
-                                        warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                        reduce_reduce_conflicts += 1;
-                                        has_conflicts = true;
-                                    }
+                                    warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                    reduce_reduce_conflicts += 1;
+                                    has_conflicts = true;
                                 }
                             }
                         }
                     }
                 }
             }
-            else {
-                const symbol = production.symbol_ids[pair.symbol_index];
-                if(grammar.isTerminal(symbol) and terminal_nullability[symbol] == .Yes) {
-                    const null_production_id = grammar.getTerminalNullProduction(symbol);
-                    if(null_production_id != 0) {
-                        const null_production = grammar.productions.items[null_production_id];
-                        var fit = follow_sets[null_production.terminal_id].iterator();
-                        while(fit.next()) |fkv| {
-                            const key = @bitCast(u32, fkv.key);
-                            if(grammar.isTerminal(key))
-                                continue;
-                            if(transition[key] == 0) {
-                                transition[key] = -@intCast(i32, null_production_id);
-                            }
-                            else if(transition[key] > 0) {
-                                // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
-                                // warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
-                            }
-                            else {
-                                if(transition[key] != -@intCast(i32, null_production_id)) {
-                                    if(terminal_nullability[grammar.productions.items[@bitCast(u32, -transition[key])].terminal_id] == .Yes) {
-                                        warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
-                                        reduce_reduce_conflicts += 1;
-                                        has_conflicts = true;
-                                    }
-                                    else {
-                                        warn("\x1b[31mNull-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
-                                        transition[key] = -@intCast(i32, null_production_id);
-                                        shift_reduce_conflicts += 1;
-                                    }
+            else if(pair.symbol_index == 0 and production.symbol_ids[0] == grammar.epsilon_index) {
+                const symbol = production.terminal_id;
+                const null_production_id = pair.production_id;
+                if(null_production_id != 0) {
+                    const null_production = grammar.productions.items[null_production_id];
+                    var fit = follow_sets[null_production.terminal_id].iterator();
+                    while(fit.next()) |fkv| {
+                        const key = @bitCast(u32, fkv.key);
+                        if(grammar.isTerminal(key))
+                            continue;
+                        if(transition[key] == 0) {
+                            transition[key] = -@intCast(i32, null_production_id);
+                            // warn("nullable reduce {} {} => {}\n", grammar.names_index_map.keyOf(key), key, -transition[key]);
+                        }
+                        else if(transition[key] > 0) {
+                            // Nullable productions cannot take precedence in a Shift-Reduce conflict resolution
+                            warn("supressed conflict {}\n", grammar.names_index_map.keyOf(key));
+                        }
+                        else {
+                            if(transition[key] != -@intCast(i32, null_production_id)) {
+                                if(terminal_nullability[grammar.productions.items[@bitCast(u32, -transition[key])].terminal_id] == .Yes) {
+                                    warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
+                                    reduce_reduce_conflicts += 1;
+                                    has_conflicts = true;
+                                }
+                                else {
+                                    warn("\x1b[31mNull-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], null_production_id, grammar.names_index_map.keyOf(key));
+                                    transition[key] = -@intCast(i32, null_production_id);
+                                    shift_reduce_conflicts += 1;
                                 }
                             }
                         }
