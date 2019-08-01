@@ -52,31 +52,18 @@ pub const Production = struct {
 
     pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8) !void {
         if(precedence) |p| {
-            if(std.mem.compare(u8, p, "Noconsume") == .Equal) {
-                assert(self.symbols.len > 0);
-                self.consumes = self.symbols.len;
-            }
             if(std.mem.compare(u8, p, "Shadow") == .Equal) {
                 self.shadowed = true;
             }
         }
 
-        // Allow end-of-file token to be specified
-        if(std.mem.compare(u8, symbol, "Eof") == .Equal) {
-            assert(self.consumes == self.symbols.len);
-            try self.symbols.append("$eof");
-        }
-        else {
-            assert(self.consumes == 0 or self.consumes == self.symbols.len);
-            try self.symbols.append(symbol);
-        }
+        try self.symbols.append(symbol);
     }
 
     pub fn finalize(self: *Self) !void {
         // How many symbols does this production consume?
-        if(self.consumes == 0) {
-            self.consumes = self.symbols.len;
-        }
+        self.consumes = self.symbols.len;
+
         // Check if production is nullable
         if(self.symbols.len == 0) {
             // Traditionally represented in litterature as the greek Epsilon
@@ -994,11 +981,22 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                         const tkey = @bitCast(u32, -transition[key]); 
                         if(tkey != pair.production_id) {
                             if(production.shadowed) {
-                                // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                const pk = -@intCast(i32, pair.production_id);
+                                const tk = transition[key];
+                                for(transition) |*t| {
+                                    if(t.* == pk)
+                                        t.* = tk;
+                                }
                             }
                             else if(grammar.productions.items[tkey].shadowed) {
-                                // warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
-                                transition[key] = -@intCast(i32, pair.production_id);
+                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
+                                // transition[key] = -@intCast(i32, pair.production_id);
+                                const tk = transition[key];
+                                for(transition) |*t| {
+                                    if(t.* == tk)
+                                        t.* = -@intCast(i32, pair.production_id);
+                                }
                             }
                             else {
                                 const resolve = resolveReduceReducePass(grammar, @intCast(u32, -transition[key]), pair.production_id);

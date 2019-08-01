@@ -1,6 +1,5 @@
 pub extern "LALR" const zig_grammar = struct {
-    fn Root() ?*Node {}
-    fn Root(ContainerMembers: *Node) ?*Node {}
+    fn Root(MaybeContainerMembers: *Node) ?*Node {}
 
     // DocComments
     fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
@@ -10,6 +9,11 @@ pub extern "LALR" const zig_grammar = struct {
     // Containers
     fn MaybeContainerMembers() ?*NodeList {}
     fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList {}
+    // Note: these exist to allow a trailing container field without comma
+    fn MaybeContainerMembers(MaybePub: ?*Token, ContainerField: *Node) *Node {}
+    fn MaybeContainerMembers(DocCommentLines: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
+    fn MaybeContainerMembers(ContainerMembers: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
+    fn MaybeContainerMembers(ContainerMembers: *NodeList, DocCommentLines: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
 
     fn ContainerMembers(ContainerMembers: *NodeList, ContainerMember: *Node) *NodeList {}
     fn ContainerMembers(ContainerMembers: *NodeList, ContainerMemberWithDocComment: *Node) *NodeList {}
@@ -20,8 +24,6 @@ pub extern "LALR" const zig_grammar = struct {
     fn ContainerMember(TopLevelComptime: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
-    // TODO: create fix to enable final ContainerField without Comma
-    // fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, RBrace: Noconsume(*Token)) *Node {}
 
     // Test
     fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node {}
@@ -110,7 +112,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
 
     fn BlockExprStatement(BlockExpr: *Node) *Node {}
-    fn BlockExprStatement(Statement: *Node) *Node {}
+    fn BlockExprStatement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
     fn BlockExpr(Block: *Node) *Node {}
     fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
@@ -225,8 +227,6 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryTypeExpr(SwitchExpr: Shadow(*Node)) *Node {}
 
     // Note: ContainerDeclAuto has been inlined
-    // fn ContainerDecl(ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
-    // fn ContainerDecl(ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
 

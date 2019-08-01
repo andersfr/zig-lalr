@@ -1,10 +1,12 @@
 # zig-lalr
 LALR parser generator written in native zig
 
-You need a copy of my flat-hash table implementation to compile.
-Running the LALR generator (main.zig) outputs a lot of debug to the screen.
-Many conflicts are reported by they should all be correctly resolved.
+### You need a copy of my flat-hash table implementation to compile.
+### Running the LALR generator (main.zig) outputs a lot of debug to the screen.
+### Many conflicts are reported by they should all be correctly resolved.
 
-zig run main.zig
-python lexer.py lexer.ll.zig
-zig run lexer.zig
+1. git clone https://github.com/andersfr/zig-flat-hash.git
+2. ln -s zig-flat-hash flat\_hash
+3. zig run lalr.zig
+4. python lexer.py lexer.ll.zig
+5. zig run main.zig

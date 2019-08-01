@@ -488,7 +488,7 @@ def main():
         token_id_rev[token_id_next] = token
         token_id_next += 1
 
-    output.append("const Lexer = @import(\"lexer.zig\").Lexer;\n")
+    output.append("const Lexer = @import(\"zig_lexer.zig\").Lexer;\n")
     output.append("pub const Id = @import(\"zig_grammar.tokens.zig\").Id;\n\n")
     # output.append("pub const Id = enum(u8) {\n")
     # for (k,v) in token_id_rev.iteritems():

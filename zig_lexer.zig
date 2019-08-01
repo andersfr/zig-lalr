@@ -1,7 +1,4 @@
-const std = @import("std");
-const assert = std.debug.assert;
 const lexer_tables = @import("lexer.tab.zig");
-const Allocator = std.mem.Allocator;
 
 const init_state = lexer_tables.init_state;
 const rle_states = lexer_tables.rle_states;
@@ -10,16 +7,8 @@ const accept_states = lexer_tables.accept_states;
 const accept_tokens = lexer_tables.accept_tokens;
 const lexer_switch = lexer_tables.lexer_switch;
 
-const Parser = @import("zig_grammar.actions.zig").Parser;
 const Token = @import("zig_grammar.tokens.zig").Token;
 const Id = @import("zig_grammar.tokens.zig").Id;
-// pub const Token = struct {
-//     pub const Id = lexer_tables.Id;
-
-//     id: Id,
-//     start: usize,
-//     end: usize,
-// };
 
 pub const Lexer = struct {
     state: [128]u16,
@@ -191,34 +180,6 @@ pub const Lexer = struct {
         return Token{ .id = .Eof, .start = self.first, .end = self.index };
     }
 };
-
-pub fn main() !void {
-    var file = try std.fs.File.openRead("lexer.zig");
-    // var file = try std.fs.File.openRead("../zig/std/zig/parse.zig");
-    defer file.close();
-
-    var allocator = std.heap.c_allocator;
-
-    var stream = file.inStream();
-    const buffer = try stream.stream.readAllAlloc(allocator, 0x1000000);
-
-    var lexer = Lexer.init(buffer);
-    var parser = Parser.init(allocator);
-    var line: usize = 1;
-    defer parser.deinit();
-    while (true) {
-        var token = lexer.next();
-        if(token.id == .Newline) {
-            line += 1;
-            continue;
-        }
-        if(token.id == .LineComment) continue;
-
-        parser.action(&token) catch { std.debug.warn("\nline: {}\n", line); return error.ParserError; };
-        if(token.id == .Eof)
-            break;
-    }
-}
 
 test "lexer.zig" {
     _ = @import("lexer_test.zig");
