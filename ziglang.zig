@@ -155,7 +155,8 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryExpr(Keyword_cancel: *Token, Expr: *Node) *Node {}
     fn PrimaryExpr(Keyword_break: *Token) *Node {}
     fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token) *Node {}
-    fn PrimaryExpr(Keyword_break: *Token, MaybeBreakLabel: ?*Node, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, Expr: *Node) *Node {}
+    fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token, Expr: *Node) *Node {}
     fn PrimaryExpr(Keyword_continue: *Token) *Node {}
     fn PrimaryExpr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
     fn PrimaryExpr(Keyword_return: *Token) *Node {}
@@ -164,8 +165,8 @@ pub extern "LALR" const zig_grammar = struct {
     // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     // Note: this makes no sense as TypeExpr already implements BlockExpr
     // fn PrimaryExpr(Block: *Node) *Node {}
-    fn PrimaryExpr(LoopExpr: *Node) *Node {}
-    fn PrimaryExpr(BlockLabel: *Token, LoopExpr: *Node) *Node {}
+    // fn PrimaryExpr(LoopExpr: *Node) *Node {}
+    // fn PrimaryExpr(BlockLabel: *Token, LoopExpr: *Node) *Node {}
     fn PrimaryExpr(CurlySuffixExpr: *Node) *Node {}
 
     fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
@@ -243,7 +244,7 @@ pub extern "LALR" const zig_grammar = struct {
 
     // Assembly
     fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, RParen: *Token) *Node {}
-    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, AsmOuput: *Node, RParen: *Token) *Node {}
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, AsmOutput: *Node, RParen: *Token) *Node {}
 
     fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) *Node {}
     fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList, AsmInput: *Node) *Node {}
@@ -262,9 +263,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {}
 
     // Helper grammar
-    fn MaybeBreakLabel() ?*Token {}
-    fn MaybeBreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
-
+    fn BreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
     fn BlockLabel(Identifier: *Token, Colon: *Token) *Token {}
 
     fn FieldInits(FieldInit: *Node) *NodeList {}
@@ -287,7 +286,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
 
     fn ParamType(Keyword_var: *Token) *Node {}
-    fn ParamType(Keyword_ellipsis3: *Token) *Node {}
+    fn ParamType(Ellipsis3: *Token) *Node {}
     fn ParamType(TypeExpr: *Node) *Node {}
 
     // Control flow prefixes

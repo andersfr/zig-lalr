@@ -179,20 +179,164 @@ fn writeGrammar(grammar: Grammar) !void {
         try out.stream.print("    Ignore = {},\n", x+3);
         try out.stream.write("};\n\n");
 
+        try out.stream.write(
+            \\pub fn idToString(id: Id) []const u8 {
+            \\    switch(id) {
+            \\        .Builtin                            => return "@",
+            \\        .Ampersand                          => return "&",
+            \\        .AmpersandEqual                     => return "&=",
+            \\        .Asterisk                           => return "*",
+            \\        .AsteriskAsterisk                   => return "**",
+            \\        .AsteriskEqual                      => return "*=",
+            \\        .AsteriskPercent                    => return "*%",
+            \\        .AsteriskPercentEqual               => return "*%=",
+            \\        .Caret                              => return "^",
+            \\        .CaretEqual                         => return "^=",
+            \\        .Colon                              => return ":",
+            \\        .Comma                              => return ",",
+            \\        .Period                             => return ".",
+            \\        .Ellipsis2                          => return "..",
+            \\        .Ellipsis3                          => return "...",
+            \\        .Equal                              => return "=",
+            \\        .EqualEqual                         => return "==",
+            \\        .EqualAngleBracketRight             => return "=>",
+            \\        .Bang                               => return "!",
+            \\        .BangEqual                          => return "!=",
+            \\        .AngleBracketLeft                   => return "<",
+            \\        .AngleBracketAngleBracketLeft       => return "<<",
+            \\        .AngleBracketAngleBracketLeftEqual  => return "<<=",
+            \\        .AngleBracketLeftEqual              => return "<=",
+            \\        .LBrace                             => return "{",
+            \\        .LBracket                           => return "[",
+            \\        .LParen                             => return "(",
+            \\        .Minus                              => return "-",
+            \\        .MinusEqual                         => return "-=",
+            \\        .MinusAngleBracketRight             => return "->",
+            \\        .MinusPercent                       => return "-%",
+            \\        .MinusPercentEqual                  => return "-%=",
+            \\        .Percent                            => return "%",
+            \\        .PercentEqual                       => return "%=",
+            \\        .Pipe                               => return "|",
+            \\        .PipePipe                           => return "||",
+            \\        .PipeEqual                          => return "|=",
+            \\        .Plus                               => return "+",
+            \\        .PlusPlus                           => return "++",
+            \\        .PlusEqual                          => return "+=",
+            \\        .PlusPercent                        => return "+%",
+            \\        .PlusPercentEqual                   => return "+%=",
+            \\        .BracketStarCBracket                => return "[*c]",
+            \\        .BracketStarBracket                 => return "[*]",
+            \\        .QuestionMark                       => return "?",
+            \\        .AngleBracketRight                  => return ">",
+            \\        .AngleBracketAngleBracketRight      => return ">>",
+            \\        .AngleBracketAngleBracketRightEqual => return ">>=",
+            \\        .AngleBracketRightEqual             => return ">=",
+            \\        .RBrace                             => return "}",
+            \\        .RBracket                           => return "]",
+            \\        .RParen                             => return ")",
+            \\        .Semicolon                          => return ";",
+            \\        .Slash                              => return "/",
+            \\        .SlashEqual                         => return "/=",
+            \\        .Tilde                              => return "~",
+            \\        .Keyword_align                      => return "align",
+            \\        .Keyword_allowzero                  => return "allowzero",
+            \\        .Keyword_and                        => return "and",
+            \\        .Keyword_asm                        => return "asm",
+            \\        .Keyword_async                      => return "async",
+            \\        .Keyword_await                      => return "await",
+            \\        .Keyword_break                      => return "break",
+            \\        .Keyword_catch                      => return "catch",
+            \\        .Keyword_cancel                     => return "cancel",
+            \\        .Keyword_comptime                   => return "comptime",
+            \\        .Keyword_const                      => return "const",
+            \\        .Keyword_continue                   => return "continue",
+            \\        .Keyword_defer                      => return "defer",
+            \\        .Keyword_else                       => return "else",
+            \\        .Keyword_enum                       => return "enum",
+            \\        .Keyword_errdefer                   => return "errdefer",
+            \\        .Keyword_error                      => return "error",
+            \\        .Keyword_export                     => return "export",
+            \\        .Keyword_extern                     => return "extern",
+            \\        .Keyword_false                      => return "false",
+            \\        .Keyword_fn                         => return "fn",
+            \\        .Keyword_for                        => return "for",
+            \\        .Keyword_if                         => return "if",
+            \\        .Keyword_inline                     => return "inline",
+            \\        .Keyword_nakedcc                    => return "nakedcc",
+            \\        .Keyword_noalias                    => return "noalias",
+            \\        .Keyword_null                       => return "null",
+            \\        .Keyword_or                         => return "or",
+            \\        .Keyword_orelse                     => return "orelse",
+            \\        .Keyword_packed                     => return "packed",
+            \\        .Keyword_promise                    => return "promise",
+            \\        .Keyword_pub                        => return "pub",
+            \\        .Keyword_resume                     => return "resume",
+            \\        .Keyword_return                     => return "return",
+            \\        .Keyword_linksection                => return "linksection",
+            \\        .Keyword_stdcallcc                  => return "stdcallcc",
+            \\        .Keyword_struct                     => return "struct",
+            \\        .Keyword_suspend                    => return "suspend",
+            \\        .Keyword_switch                     => return "switch",
+            \\        .Keyword_test                       => return "test",
+            \\        .Keyword_threadlocal                => return "threadlocal",
+            \\        .Keyword_true                       => return "true",
+            \\        .Keyword_try                        => return "try",
+            \\        .Keyword_undefined                  => return "undefined",
+            \\        .Keyword_union                      => return "union",
+            \\        .Keyword_unreachable                => return "unreachable",
+            \\        .Keyword_use                        => return "use",
+            \\        .Keyword_usingnamespace             => return "usingnamespace",
+            \\        .Keyword_var                        => return "var",
+            \\        .Keyword_volatile                   => return "volatile",
+            \\        .Keyword_while                      => return "while",
+            \\
+            \\        .Invalid                            => return "$invalid",
+            \\        .Eof                                => return "$eof",
+            \\        .Newline                            => return "$newline",
+            \\        .Ignore                             => return "$ignore",
+            \\        .ShebangLine                        => return "#!",
+            \\        .LineComment                        => return "//",
+            \\        .DocComment                         => return "///",
+            \\        .LineString                         => return "\\",
+            \\        .LineCString                        => return "c\\",
+            \\
+            \\        .Identifier                         => return "Identifier",
+            \\        .CharLiteral                        => return "CharLiteral",
+            \\        .StringLiteral                      => return "StringLiteral",
+            \\        .IntegerLiteral                     => return "IntegerLiteral",
+            \\        .FloatLiteral                       => return "FloatLiteral",
+            \\        //else => unreachable,
+            \\    }
+            \\}
+        );
+
         try out.stream.write("pub const TerminalId = enum(u8) {\n");
         try out.stream.print("    Accept = 0,\n");
         git = grammar.names_index_map.lookup.iterator();
         while(git.next()) |kv| {
             if(0 < kv.value and kv.value < grammar.epsilon_index) {
-                // if(kv.key.len > 5 and std.mem.compare(u8, kv.key[0..5], "Maybe")) {
-                //     try out.stream.print("    {} = {},\n", kv.key[5..], kv.value);
-                // }
-                // else {
-                    try out.stream.print("    {} = {},\n", kv.key, kv.value);
-                // }
+                try out.stream.print("    {} = {},\n", kv.key, kv.value);
             }
         }
         try out.stream.write("};\n\n");
+
+        try out.stream.write("pub fn terminalIdToString(id: TerminalId) []const u8 {\n");
+        try out.stream.write("    switch(id) {\n");
+        try out.stream.write((" " ** 8) ++ ".Accept => return \"$accept\",");
+        git = grammar.names_index_map.lookup.iterator();
+        while(git.next()) |kv| {
+            if(0 < kv.value and kv.value < grammar.epsilon_index) {
+                try out.stream.print((" " ** 8) ++ ".{} => ", kv.key);
+                if(kv.key.len > 5 and std.mem.compare(u8, kv.key[0..5], "Maybe") == .Equal) {
+                    try out.stream.print("return \"{}?\",\n", kv.key[5..]);
+                }
+                else {
+                    try out.stream.print("return \"{}\",\n", kv.key);
+                }
+            }
+        }
+        try out.stream.write("    }\n\n");
+        try out.stream.write("}\n\n");
     }
 
     // Actions
@@ -205,14 +349,14 @@ fn writeGrammar(grammar: Grammar) !void {
             \\// AutoGenerated file
             \\
             \\const std = @import("std");
+            \\const warn = std.debug.warn;
             \\
         );
-        try out.stream.print("const Token = @import(\"{}\").Token;\n", tokens_name.view());
-        try out.stream.print("const Id = @import(\"{}\").Id;\n", tokens_name.view());
-        try out.stream.print("const TerminalId = @import(\"{}\").TerminalId;\n", tokens_name.view());
+        try out.stream.print("const Tokens = @import(\"{}\");\n", tokens_name.view());
         try out.stream.print("const Transitions = @import(\"{}\");\n\n", transitions_name.view());
         try out.stream.write(
             \\
+            \\usingnamespace Tokens;
             \\usingnamespace Transitions;
             \\
             \\pub const Parser = struct {
@@ -231,8 +375,8 @@ fn writeGrammar(grammar: Grammar) !void {
             \\        var it = self.stack.iterator();
             \\        while(it.next()) |item| {
             \\            switch(item.value) {
-            \\                .Token => |id| { warn("[{}]{} ", item.state, id); },
-            \\                .Terminal => |id| { if(item.token) |token| { warn("[{}]+{} ", item.state, id); } },
+            \\                .Token => |id| { warn("{} ", idToString(id)); },
+            \\                .Terminal => |id| { if(item.token) |token| { warn("{} ", terminalIdToString(id)); } },
             \\            }
             \\        }
             \\    }
@@ -276,6 +420,7 @@ fn writeGrammar(grammar: Grammar) !void {
             \\                    }
             \\                }
             \\                if (shift > 0) {
+            \\                    warn("{} ", idToString(token.id));
             \\                    try self.stack.append(StackItem{ .token = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Token = token.id } });
             \\                    self.state = @bitCast(u16, shift);
             \\                    return;
@@ -320,6 +465,8 @@ fn writeGrammar(grammar: Grammar) !void {
             \\                        if (goto > 0) {
             \\                            if(consumes > 0) {
             \\                                try self.stack.append(StackItem{ .token = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
+            \\                                warn("\n");
+            \\                                self.printStack();
             \\                            }
             \\                            else {
             \\                                try self.stack.append(StackItem{ .token = null, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });

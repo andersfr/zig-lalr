@@ -193,7 +193,8 @@ pub const Lexer = struct {
 };
 
 pub fn main() !void {
-    var file = try std.fs.File.openRead("lexer.zig");
+    // var file = try std.fs.File.openRead("lexer.zig");
+    var file = try std.fs.File.openRead("../zig/std/zig/parse.zig");
     defer file.close();
 
     var allocator = std.heap.c_allocator;
