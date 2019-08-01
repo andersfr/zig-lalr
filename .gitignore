@@ -1,3 +1,7 @@
 zig-cache
+flat_hash
+zig_grammar.*
+main
+lalr
 *.swp
 *.o
