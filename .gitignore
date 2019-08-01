@@ -1,6 +1,7 @@
 zig-cache
 flat_hash
 zig_grammar.*
+lexer.tab.zig
 main
 lalr
 *.swp

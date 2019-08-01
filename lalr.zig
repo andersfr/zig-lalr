@@ -129,6 +129,30 @@ fn parseGrammar(name: []const u8, tree: *std.zig.ast.Tree, buffer: []const u8, c
     return grammar;
 }
 
+fn best_default_reduce(transition: []const i32) i32 {
+    var i: usize = 1;
+    var c: usize = 1;
+    var v: i32 = transition[0];
+    while(i < transition.len) : (i += 1) {
+        if(transition[i] >= 0) continue;
+        if(transition[i] == v) {
+            c += 1;
+            if(c > 8) return v;
+            continue;
+        }
+        var j = i+1;
+        while(j < transition.len) : (j += 1) {
+            if(transition[j] >= 0) continue;
+            if(transition[j] == v) {
+                c += 1;
+                if(c > 8) return v;
+            }
+        }
+        v = transition[i];
+    }
+    return 0;
+}
+
 fn writeGrammar(grammar: Grammar) !void {
     var tokens_name = try String.initWithValue(grammar.grammar_name);
     defer tokens_name.deinit();
@@ -347,32 +371,28 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.write("    [_]i16{");
                 var i: usize = grammar.epsilon_index;
                 var v: i32 = -1;
-                var c: usize = 0;
                 while(i < transition.len) : (i += 1) {
                     if(transition[i] < 0) {
                         if(v == -1) v = -transition[i];
                         if(-transition[i] != v) {
                             v = -2;
                         }
-                        c += 1;
                     }
                 }
-                if(v == -1) {
-                    try out.stream.write("-1, -1,");
-                }
-                else if(v == -2) {
+                if(v == -2) {
+                    const c = @truncate(i16, best_default_reduce(transition));
                     i = grammar.epsilon_index;
                     while(i < transition.len) : (i += 1) {
-                        if(transition[i] < 0) {
-                            try out.stream.print("{}, ", -transition[i]);
-                        }
-                        else {
-                            try out.stream.write("0, ");
+                        if(transition[i] < 0 and transition[i] != c) {
+                            try out.stream.print("{}, {}, ", i - grammar.epsilon_index, -transition[i]);
                         }
                     }
+                    if(c < 0) {
+                        try out.stream.print("-1, {}, ", -c);
+                    }
                 }
-                else {
-                    try out.stream.print("0, {}, ", v);
+                else if(v >= 0) {
+                    try out.stream.print("-1, {}, ", v);
                 }
                 try out.stream.write("},\n");
             }
