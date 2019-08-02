@@ -146,10 +146,15 @@ pub const Parser = struct {
 };
 
 pub fn main() !void {
-    var file = try std.fs.File.openRead("example.zig");
-    defer file.close();
-
     var allocator = std.heap.c_allocator;
+
+    var args = std.process.args();
+    if(!args.skip()) return;
+
+    const filename = if(args.next(allocator)) |arg1| try arg1 else "example.zig"[0..];
+
+    var file = try std.fs.File.openRead(filename);
+    defer file.close();
 
     var stream = file.inStream();
     const buffer = try stream.stream.readAllAlloc(allocator, 0x1000000);
@@ -166,7 +171,7 @@ pub fn main() !void {
         }
         if(token.id == .LineComment) continue;
 
-        parser.action(&token) catch { std.debug.warn("\nline: {}\n", line); return error.ParserError; };
+        parser.action(&token) catch { std.debug.warn("\nline: {} => {}\n", line, token.id); return error.ParserError; };
         if(token.id == .Eof)
             break;
     }

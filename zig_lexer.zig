@@ -7,8 +7,8 @@ const accept_states = lexer_tables.accept_states;
 const accept_tokens = lexer_tables.accept_tokens;
 const lexer_switch = lexer_tables.lexer_switch;
 
-const Token = @import("zig_grammar.tokens.zig").Token;
-const Id = @import("zig_grammar.tokens.zig").Id;
+pub const Token = @import("zig_grammar.tokens.zig").Token;
+pub const Id = @import("zig_grammar.tokens.zig").Id;
 
 pub const Lexer = struct {
     state: [128]u16,
@@ -54,8 +54,8 @@ pub const Lexer = struct {
     // Rewind to a valid tokenizer state
     fn rewind(self: *@This()) void {
         self.index -= self.steps + 1;
+        self.peek = self.source[self.index];
         _ = self.getc();
-        self.peek = self.getc();
     }
 
     // Process and accept a token
@@ -181,6 +181,6 @@ pub const Lexer = struct {
     }
 };
 
-test "lexer.zig" {
-    _ = @import("lexer_test.zig");
+test "zig_lexer.zig" {
+    _ = @import("zig_lexer.test.zig");
 }
