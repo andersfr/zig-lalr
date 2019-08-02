@@ -4,15 +4,11 @@ const warn = std.debug.warn;
 const String = @import("string.zig").String;
 const Grammar = @import("grammar.zig").Grammar;
 const Production = @import("grammar.zig").Production;
+const SymbolType = @import("grammar.zig").SymbolType;
 
 const Node = std.zig.ast.Node;
 
 const default_heap = std.heap.c_allocator;
-
-const SymbolType = struct {
-    name: []const u8,
-    optional: bool,
-};
 
 fn parsePrecedence(proto: *Node.VarDecl) void {
     // warn("precedence\n");
@@ -71,8 +67,25 @@ fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnP
     errdefer default_heap.destroy(prod);
 
     // Initialize
-    prod.* = Production.init(default_heap, prod_name);
+    switch(proto.return_type) {
+        .Explicit => |explicit| {
+            const symbol_type = try parseSymbolType(tree, buffer, explicit);
+            prod.* = Production.init(default_heap, prod_name, symbol_type);
+        },
+        .InferErrorSet => |infer| {
+            const symbol_type = try parseSymbolType(tree, buffer, infer);
+            prod.* = Production.init(default_heap, prod_name, symbol_type);
+        }
+    }
     errdefer prod.deinit();
+
+    if(proto.body_node) |body| {
+        const s = tree.tokens.at(body.firstToken());
+        const e = tree.tokens.at(body.lastToken());
+        prod.body = buffer[s.start..e.end];
+        if(std.mem.compare(u8, prod.body, "{}") == .Equal)
+            prod.body = "";
+    }
 
     // Parse each element in production
     var it = proto.params.iterator(0);
@@ -90,9 +103,9 @@ fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnP
                         switch(suffix.op) {
                             .Call => |call| {
                                 if(call.params.len == 1) {
-                                    _ = try parseSymbolType(tree, buffer, @intToPtr(*Node, @ptrToInt(call.params.at(0).*)));
+                                    const symbol_type = try parseSymbolType(tree, buffer, @intToPtr(*Node, @ptrToInt(call.params.at(0).*)));
                                     // Append the parameter name
-                                    try prod.append(param_str, precedence_str);
+                                    try prod.append(param_str, precedence_str, symbol_type);
                                 }
                             },
                             else => {}
@@ -100,8 +113,8 @@ fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnP
                     }
                 }
                 else {
-                    _ = try parseSymbolType(tree, buffer, decl.type_node);
-                    try prod.append(param_str, null);
+                    const symbol_type = try parseSymbolType(tree, buffer, decl.type_node);
+                    try prod.append(param_str, null, symbol_type);
                 }
             }
         }

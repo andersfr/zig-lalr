@@ -27,20 +27,29 @@ fn varToStr(b: var) []const u8 {
     }
 }
 
+pub const SymbolType = struct {
+    name: []const u8,
+    optional: bool,
+};
+
+
 pub const Production = struct {
     terminal: []const u8,
+    terminal_type: SymbolType,
     symbols: ArrayList([]const u8),
     symbol_ids: []usize = [0]usize{},
+    symbol_types: ArrayList(SymbolType),
     terminal_id: usize = 0,
     consumes: usize = 0,
+    body: []const u8 = "",
     nullable: YesNoMaybe = .Maybe,
     shadowed: bool = false,
 
     const Self = @This();
 
-    pub fn init(allocator: *std.mem.Allocator, terminal: []const u8) Self {
+    pub fn init(allocator: *std.mem.Allocator, terminal: []const u8, terminal_type: SymbolType) Self {
         // Only store allocator in the ArrayList and pull the pointer when needed
-        return Self{ .terminal = terminal, .symbols = ArrayList([]const u8).init(allocator) };
+        return Self{ .terminal = terminal, .terminal_type = terminal_type, .symbols = ArrayList([]const u8).init(allocator), .symbol_types = ArrayList(SymbolType).init(allocator), };
     }
 
     pub fn deinit(self: *Self) void {
@@ -48,9 +57,10 @@ pub const Production = struct {
             self.symbols.allocator.free(self.symbol_ids);
         }
         self.symbols.deinit();
+        self.symbol_types.deinit();
     }
 
-    pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8) !void {
+    pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8, type_info: SymbolType) !void {
         if(precedence) |p| {
             if(std.mem.compare(u8, p, "Shadow") == .Equal) {
                 self.shadowed = true;
@@ -58,6 +68,7 @@ pub const Production = struct {
         }
 
         try self.symbols.append(symbol);
+        try self.symbol_types.append(type_info);
     }
 
     pub fn finalize(self: *Self) !void {
@@ -67,7 +78,7 @@ pub const Production = struct {
         // Check if production is nullable
         if(self.symbols.len == 0) {
             // Traditionally represented in litterature as the greek Epsilon
-            try self.append("$epsilon", null);
+            try self.append("$epsilon", null, SymbolType{ .name = "$epsilon", .optional = true });
             self.nullable = .Yes;
         }
         self.symbol_ids = try self.symbols.allocator.alloc(usize, self.symbols.len);
@@ -167,7 +178,7 @@ pub const Grammar = struct {
         // The first terminal encountered is considered the initial production
         if (self.productions.len == 0) {
             // Augment the grammar with rule: $accept <- `initial` $eof
-            try self.augment(production.terminal);
+            try self.augment(production.terminal, production.terminal_type);
         }
 
         // Allow the production to set internal fields
@@ -219,6 +230,9 @@ pub const Grammar = struct {
 
         // Build the isocore set
         self.transitions = try isocorePass(self, terminal_nullability, follow_sets);
+
+        // Optimize gotos
+        try shortcutPass(self);
     }
 
     pub fn terminalCount(self: Self) usize {
@@ -243,15 +257,15 @@ pub const Grammar = struct {
         warn("\n");
     }
 
-    fn augment(self: *Self, name: []const u8) !void {
+    fn augment(self: *Self, name: []const u8, terminal_type: SymbolType) !void {
         // Augmenting a grammar means that it gets the special rule: $accept <- `initial` $eof
         var production = try self.allocator.create(Production);
-        production.* = Production.init(self.allocator, "$accept");
+        production.* = Production.init(self.allocator, "$accept", terminal_type);
         errdefer production.deinit();
 
         // Build the production
-        try production.append(name, null);
-        try production.append("$eof", null);
+        try production.append(name, null, terminal_type);
+        try production.append("$eof", null, SymbolType{ .name = "$eof", .optional = false });
         try production.finalize();
 
         // Append it to the grammar
@@ -1187,4 +1201,64 @@ fn subProductionPass(grammar: *Grammar, lproduction_id: usize, rproduction_id: u
         }
     }
     return false;
+}
+
+fn shortcutPass(grammar: *Grammar) !void {
+    const reducers = try grammar.allocator.alloc(i32, grammar.transitions.len);
+    defer grammar.allocator.free(reducers);
+
+    var i: usize = 0;
+    while(i < grammar.transitions.len) : (i += 1) {
+        const transition = grammar.transitions.items[i];
+
+        var default_reduce: i32 = -1;
+        for(transition) |t| {
+            if(t == 0) continue;
+
+            // if(t < 0) {
+                if(default_reduce == -1) {
+                    default_reduce = -t;
+                }
+                else if(default_reduce != -t) {
+                    default_reduce = -2;
+                    break;
+                }
+            // }
+        }
+        reducers[i] = blk: {
+            const zero: i32 = 0;
+            if(default_reduce >= 0) {
+                const production = grammar.productions.items[@bitCast(u32, default_reduce)];
+                if(production.body.len != 0 or production.consumes != 1)
+                    break :blk zero;
+                if(!grammar.isTerminal(production.symbol_ids[0]))
+                    break :blk zero;
+                if(std.mem.compare(u8, production.terminal_type.name, production.symbol_types.items[0].name) != .Equal)
+                    break :blk zero;
+                break :blk default_reduce;
+            }
+            break :blk zero;
+        };
+    }
+    while(true) {
+        var changed: bool = false;
+        i = 0;
+        while(i < grammar.transitions.len) : (i += 1) {
+            const transition = grammar.transitions.items[i];
+
+            var t: usize = 0;
+            while(grammar.isTerminal(t)) : (t += 1) {
+                if(transition[t] == 0) continue;
+                const goto = @bitCast(u32, transition[t]);
+
+                if(reducers[goto] != 0) {
+                    const production = grammar.productions.items[@bitCast(u32, reducers[goto])];
+                    transition[t] = transition[production.terminal_id];
+                    changed = true;
+                }
+            }
+        }
+        if(!changed)
+            break;
+    }
 }

@@ -194,9 +194,9 @@ pub extern "LALR" const zig_grammar = struct {
     fn ErrorUnionExpr(SuffixExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node {}
 
     fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
-    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *Node, FnCallArguments: *Node) *Node {}
+    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *NodeList, FnCallArguments: *Node) *Node {}
     fn SuffixExpr(PrimaryTypeExpr: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsOrFnCallArguments: *Node) *Node {}
+    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsOrFnCallArguments: *NodeList) *Node {}
 
     fn PrimaryTypeExpr(Builtin: *Token, Identifier: *Token, FnCallArguments: *Node) *Node {}
     fn PrimaryTypeExpr(CharLiteral: *Token) *Node {}
@@ -384,13 +384,13 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrefixTypeOp(ArrayTypeStart: *Node, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
     fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
 
-    fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *Node {}
-    fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *Node {}
-    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, SuffixOp: *Node) *Node {}
-    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *Node, FnCallArguments: *Node) *Node {}
+    fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *NodeList {}
+    fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *NodeList {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *NodeList, SuffixOp: *Node) *NodeList {}
+    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *NodeList, FnCallArguments: *Node) *NodeList {}
 
-    fn SuffixOps(SuffixOp: *Node) *Node {}
-    fn SuffixOps(SuffixOps: *Node, SuffixOp: *Node) *Node {}
+    fn SuffixOps(SuffixOp: *Node) *NodeList {}
+    fn SuffixOps(SuffixOps: *NodeList, SuffixOp: *Node) *NodeList {}
 
     fn SuffixOp(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
     fn SuffixOp(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
@@ -448,7 +448,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn AsmOutputList(AsmOutputItem: *Node) *NodeList {}
     fn AsmOutputList(AsmOutputList: *NodeList, Comma: *Token, AsmOutputItem: *Node) *NodeList {}
 
-    fn AsmInputList(AsmInputItem: *Node) *Node {}
+    fn AsmInputList(AsmInputItem: *Node) *NodeList {}
     fn AsmInputList(AsmInputList: *NodeList, Comma: *Token, AsmInputItem: *Node) *NodeList {}
 
     fn StringList(StringLiteral: *Token) *NodeList {}

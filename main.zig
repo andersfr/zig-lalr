@@ -46,7 +46,7 @@ pub const Parser = struct {
         Terminal: TerminalId,
     };
 
-    pub fn action(self: *Self, token: *Token) !void {
+    pub fn action(self: *Self, token: *Token) !bool {
         const id = @intCast(i16, @enumToInt(token.id));
 
         outer: while (true) {
@@ -73,7 +73,7 @@ pub const Parser = struct {
                     warn("{} ", idToString(token.id));
                     try self.stack.append(StackItem{ .token = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Token = token.id } });
                     self.state = @bitCast(u16, shift);
-                    return;
+                    return true;
                 }
             }
             // Reduces
@@ -134,14 +134,14 @@ pub const Parser = struct {
         if(self.stack.len == 1 and token.id == .Eof) {
             switch(self.stack.at(0).value) {
                 .Terminal => |terminal_id| {
-                    if(terminal_id == .Root)
-                        return;
+                    if(terminal_id == .Root or terminal_id == .MaybeContainerMembers)
+                        return true;
                 },
                 else => {}
             }
         }
 
-        return error.ParseError;
+        return false;
     }
 };
 
@@ -171,9 +171,14 @@ pub fn main() !void {
         }
         if(token.id == .LineComment) continue;
 
-        parser.action(&token) catch { std.debug.warn("\nline: {} => {}\n", line, token.id); return error.ParserError; };
-        if(token.id == .Eof)
+        if(!try parser.action(&token)) {
+            std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
+        }
+        if(token.id == .Eof) {
+            warn("\n");
+            break;
+        }
     }
 }
 
