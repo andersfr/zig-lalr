@@ -995,7 +995,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                         const tkey = @bitCast(u32, -transition[key]); 
                         if(tkey != pair.production_id) {
                             if(production.shadowed) {
-                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
+                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
                                 const pk = -@intCast(i32, pair.production_id);
                                 const tk = transition[key];
                                 for(transition) |*t| {
@@ -1004,7 +1004,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 }
                             }
                             else if(grammar.productions.items[tkey].shadowed) {
-                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), tkey);
+                                warn("\x1b[31mShadowed Reduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {} => {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key), pair.production_id);
                                 // transition[key] = -@intCast(i32, pair.production_id);
                                 const tk = transition[key];
                                 for(transition) |*t| {

@@ -26,7 +26,7 @@ pub const Parser = struct {
         while(it.next()) |item| {
             switch(item.value) {
                 .Token => |id| { warn("{} ", idToString(id)); },
-                .Terminal => |id| { if(item.token) |token| { warn("{} ", terminalIdToString(id)); } },
+                .Terminal => |id| { if(item.item) |token| { warn("{} ", terminalIdToString(id)); } },
             }
         }
     }
@@ -36,7 +36,7 @@ pub const Parser = struct {
     pub const Stack = std.ArrayList(StackItem);
 
     pub const StackItem = struct {
-        token: ?*Token,
+        item: ?*Token,
         state: i16,
         value: StackValue,
     };
@@ -71,7 +71,7 @@ pub const Parser = struct {
                 }
                 if (shift > 0) {
                     warn("{} ", idToString(token.id));
-                    try self.stack.append(StackItem{ .token = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Token = token.id } });
+                    try self.stack.append(StackItem{ .item = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Token = token.id } });
                     self.state = @bitCast(u16, shift);
                     return true;
                 }
@@ -116,12 +116,12 @@ pub const Parser = struct {
                         }
                         if (goto > 0) {
                             if(consumes > 0) {
-                                try self.stack.append(StackItem{ .token = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
+                                try self.stack.append(StackItem{ .item = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
                                 warn("\n");
                                 self.printStack();
                             }
                             else {
-                                try self.stack.append(StackItem{ .token = null, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
+                                try self.stack.append(StackItem{ .item = null, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
                             }
                             self.state = @bitCast(u16, goto);
                             continue :outer;
@@ -134,7 +134,7 @@ pub const Parser = struct {
         if(self.stack.len == 1 and token.id == .Eof) {
             switch(self.stack.at(0).value) {
                 .Terminal => |terminal_id| {
-                    if(terminal_id == .Root or terminal_id == .MaybeContainerMembers)
+                    if(terminal_id == .Root)
                         return true;
                 },
                 else => {}

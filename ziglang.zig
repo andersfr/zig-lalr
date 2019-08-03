@@ -1,5 +1,5 @@
 pub extern "LALR" const zig_grammar = struct {
-    fn Root(MaybeContainerMembers: *Node) ?*Node {}
+    fn Root(MaybeContainerMembers: *Node) ?*Node.Root {}
 
     // DocComments
     fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
@@ -118,12 +118,15 @@ pub extern "LALR" const zig_grammar = struct {
     fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
 
     // Expression level
-    fn AssignExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(TypeExpr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
     fn AssignExpr(Expr: *Node) *Node {}
 
-    fn Expr(BoolOrExpr: *Node) *Node {}
+    fn MaybeEqualExpr() ?*Node {}
+    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
+
     // Note: this should be deprecated
     // fn Expr(Keyword_try: *Token, BoolOrExpr: *Node) *Node {}
+    fn Expr(BoolOrExpr: *Node) *Node {}
 
     fn BoolOrExpr(BoolAndExpr: *Node) *Node {}
     fn BoolOrExpr(BoolOrExpr: *Node, Keyword_or: *Token, BoolAndExpr: *Node) *Node {}
@@ -151,8 +154,6 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrefixExpr(PrimaryExpr: *Node) *Node {}
 
     fn PrimaryExpr(AsmExpr: *Node) *Node {}
-    // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
-    // fn PrimaryExpr(IfExpr: *Node) *Node {}
     fn PrimaryExpr(Keyword_resume: *Token, Expr: *Node) *Node {}
     fn PrimaryExpr(Keyword_cancel: *Token, Expr: *Node) *Node {}
     fn PrimaryExpr(Keyword_break: *Token) *Node {}
@@ -163,7 +164,8 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrimaryExpr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
     fn PrimaryExpr(Keyword_return: *Token) *Node {}
     fn PrimaryExpr(Keyword_return: *Token, Expr: *Node) *Node {}
-
+    // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
+    // fn PrimaryExpr(IfExpr: *Node) *Node {}
     // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
     // Note: this makes no sense as TypeExpr already implements BlockExpr
     // fn PrimaryExpr(Block: *Node) *Node {}
@@ -348,8 +350,9 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn BitwiseOp(Ampersand: *Token) *Token {}
     fn BitwiseOp(Caret: *Token) *Token {}
+    fn BitwiseOp(Pipe: *Token) *Token {}
+    // Note: Inconsistent with declared precedence rules
     fn BitwiseOp(Keyword_orelse: *Token) *Token {}
-    // Note: Keyword_catch is handled separately
     // fn BitwiseOp(Keyword_catch: *Token) *Token {}
 
     fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token {}
@@ -381,8 +384,10 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn PrefixTypeOp(QuestionMark: *Token) *Node {}
     fn PrefixTypeOp(Keyword_promise: *Token, MinusAngleBracketRight: *Token) *Node {}
-    fn PrefixTypeOp(ArrayTypeStart: *Node, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
-    fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, MaybeAllowzero: ?*Token) *Node {}
+    // Note: ArrayTypeStart inlined and split into Array and Slice to better model modifiers
+    fn PrefixTypeOp(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn PrefixTypeOp(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
+    fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
 
     fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *NodeList {}
     fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *NodeList {}
@@ -406,8 +411,9 @@ pub extern "LALR" const zig_grammar = struct {
     fn FnCallArguments(LParen: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RParen: *Token) *Node {}
 
     // Ptr specific
-    fn ArrayTypeStart(LBracket: *Token, RBracket: *Token) *Node {}
-    fn ArrayTypeStart(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    // Note: deprecated these and inlined in PrefixTypeOp
+    // fn ArrayTypeStart(LBracket: *Token, RBracket: *Token) *Node {}
+    // fn ArrayTypeStart(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
 
     fn PtrTypeStart(Asterisk: *Token) *Token {}
     fn PtrTypeStart(AsteriskAsterisk: *Token) *Token {}
@@ -424,6 +430,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, RParen: *Token) *Node {}
     fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token, RParen: *Token) *Node {}
     fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_enum: *Token, LParen: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
 
     fn ContainerDeclOp(Keyword_struct: *Token) *Token {}
     fn ContainerDeclOp(Keyword_union: *Token) *Token {}
@@ -472,9 +479,6 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn MaybeExpr() ?*Node {}
     fn MaybeExpr(Expr: *Node) ?*Node {}
-
-    fn MaybeEqualExpr() ?*Node {}
-    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
 
     fn MaybeBang() ?*Token {}
     fn MaybeBang(Bang: *Token) ?*Token {}

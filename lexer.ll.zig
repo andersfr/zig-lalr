@@ -208,7 +208,10 @@
 {
     while (true) {
         switch (self.peek) {
-            '\n', -1 => return Id.CharLiteral,
+            '\n', -1 => return Id.Invalid,
+            '\\' => {
+                _ = self.getc();
+            },
             '\'' => {
                 _ = self.getc();
                 return Id.CharLiteral;
@@ -223,9 +226,13 @@
 // StringLiteral
 // %dfa "
 {
+    // TODO: utf-8 sequences
     while (true) {
         switch (self.peek) {
-            '\n', -1 => return Id.StringLiteral,
+            '\n', -1 => return Id.Invalid,
+            '\\' => {
+                _ = self.getc();
+            },
             '"' => {
                 _ = self.getc();
                 return Id.StringLiteral;
