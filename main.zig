@@ -1,7 +1,7 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
-const idToString = @import("zig_debug.zig").idToString;
+const idToString = @import("zig_grammar.debug.zig").idToString;
 const Lexer = @import("zig_lexer.zig").Lexer;
 const Types = @import("zig_grammar.types.zig");
 const Tokens = @import("zig_grammar.tokens.zig");

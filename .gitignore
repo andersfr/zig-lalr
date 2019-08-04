@@ -1,7 +1,11 @@
 zig-cache
 flat_hash
-zig_grammar.*
+zig_grammar.txt
+zig_grammar.tokens.zig
+zig_grammar.tables.zig
+zig_grammar.actions.zig
 lexer.tab.zig
+isocores.txt
 main
 lalr
 *.swp
