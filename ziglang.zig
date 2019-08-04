@@ -85,8 +85,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn Statement(IfStatement: *Node) *Node {}
     fn Statement(LabeledStatement: *Node) *Node {}
     fn Statement(SwitchExpr: *Node) *Node {}
-    fn Statement(BlockExprStatement: *Node) *Node {}
-    // fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
@@ -96,7 +95,7 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn LabeledStatement(LoopStatement: *Node) *Node {}
     fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
-    // fn LabeledStatement(BlockExpr: *Node) *Node {}
+    fn LabeledStatement(BlockExpr: *Node) *Node {}
 
     fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
     fn LoopStatement(MaybeInline: ?*Token, WhileStatement: *Node) *Node {}

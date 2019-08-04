@@ -3,12 +3,14 @@ const warn = std.debug.warn;
 
 const idToString = @import("zig_debug.zig").idToString;
 const Lexer = @import("zig_lexer.zig").Lexer;
+const Types = @import("zig_grammar.types.zig");
 const Tokens = @import("zig_grammar.tokens.zig");
-const Transitions = @import("zig_grammar.tables.zig");
 const Actions = @import("zig_grammar.actions.zig");
+const Transitions = @import("zig_grammar.tables.zig");
 
-usingnamespace Actions;
+usingnamespace Types;
 usingnamespace Tokens;
+usingnamespace Actions;
 usingnamespace Transitions;
 
 pub const Parser = struct {

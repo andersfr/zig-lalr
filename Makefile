@@ -15,10 +15,14 @@ lalr: ziglang.zig lalr.zig grammar.zig
 	time zig build-exe --single-threaded ${MODE} lalr.zig
 
 zig_grammar.actions.zig: lalr ziglang.zig
-	./lalr 2>isocores.txt && tail -n 2 isocores.txt
+	time ./lalr 2>isocores.txt && tail -n 3 isocores.txt
+	zig fmt zig_grammar.tokens.zig
+	zig fmt zig_grammar.actions.zig
+	zig fmt zig_grammar.tables.zig
 
 lexer.tab.zig: lexer.ll.zig lexer.py
 	./lexer.py lexer.ll.zig
+	zig fmt lexer.tab.zig
 
 clean:
 	rm -rf zig-cache main lalr isocores.txt zig_grammar.*

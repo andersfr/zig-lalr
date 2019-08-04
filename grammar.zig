@@ -973,7 +973,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     }
                     else if(transition[key] > 0) {
                         if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
-                            // TODO: this can actually be deduced from the grammar
+                            // // TODO: this can actually be deduced from the grammar
                             if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
                                 const Else = key == grammar.names_index_map.indexOf("Keyword_else").?;
                                 warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
@@ -988,7 +988,7 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             }
                         }
                         else {
-                            // warn("Resolved Shift-Reduce conflict\n");
+                            warn("Resolved Shift-Reduce conflict\n");
                         }
                     }
                     else {
