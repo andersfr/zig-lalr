@@ -117,9 +117,13 @@ pub const Lexer = struct {
             }
             // Check if illegal character, ie. >= 0x80
             else if (self.peek & 0x80 != 0) {
-                // Discard and return Token.Id.Invalid; no attempt to parse potential unicode
-                _ = self.getc();
-                return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                // Not an error if peeking into escaped utf8 strings
+                if(self.char != '\"') {
+                    // Discard and return Token.Id.Invalid; no attempt to parse potential unicode
+                    _ = self.getc();
+                    return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                }
+                peek = 0;
             }
 
             // Check acceptance state

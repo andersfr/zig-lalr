@@ -5,12 +5,14 @@ const idToString = @import("zig_debug.zig").idToString;
 const Lexer = @import("zig_lexer.zig").Lexer;
 const Tokens = @import("zig_grammar.tokens.zig");
 const Transitions = @import("zig_grammar.tables.zig");
+const Actions = @import("zig_grammar.actions.zig");
 
+usingnamespace Actions;
 usingnamespace Tokens;
 usingnamespace Transitions;
 
 pub const Parser = struct {
-    state: usize = 0,
+    state: i16 = 0,
     stack: Stack,
 
     pub fn init(allocator: *std.mem.Allocator) Self {
@@ -26,7 +28,7 @@ pub const Parser = struct {
         while(it.next()) |item| {
             switch(item.value) {
                 .Token => |id| { warn("{} ", idToString(id)); },
-                .Terminal => |id| { if(item.item) |token| { warn("{} ", terminalIdToString(id)); } },
+                .Terminal => |id| { if(item.item != 0) { warn("{} ", terminalIdToString(id)); } },
             }
         }
     }
@@ -35,22 +37,11 @@ pub const Parser = struct {
 
     pub const Stack = std.ArrayList(StackItem);
 
-    pub const StackItem = struct {
-        item: ?*Token,
-        state: i16,
-        value: StackValue,
-    };
-
-    pub const StackValue = union(enum) {
-        Token: Id,
-        Terminal: TerminalId,
-    };
-
     pub fn action(self: *Self, token: *Token) !bool {
         const id = @intCast(i16, @enumToInt(token.id));
 
         outer: while (true) {
-            var state = self.state;
+            var state: usize = @bitCast(u16, self.state);
 
             // Shifts
             if (shift_table[state].len > 0) {
@@ -71,8 +62,8 @@ pub const Parser = struct {
                 }
                 if (shift > 0) {
                     warn("{} ", idToString(token.id));
-                    try self.stack.append(StackItem{ .item = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Token = token.id } });
-                    self.state = @bitCast(u16, shift);
+                    try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token.id } });
+                    self.state = shift;
                     return true;
                 }
             }
@@ -91,11 +82,13 @@ pub const Parser = struct {
                 }
                 if (reduce > 0) {
                     const consumes = consumes_table[@bitCast(u16, reduce)];
-                    var pop = consumes;
-                    while (pop > 0) : (pop -= 1) {
-                        state = @bitCast(u16, self.stack.pop().state);
-                    }
-                    const produces = produces_table[@bitCast(u16, reduce)];
+                    // const produces = produces_table[@bitCast(u16, reduce)];
+                    // var pop = consumes;
+                    // while (pop > 0) : (pop -= 1) {
+                    //     self.state = self.stack.pop().state;
+                    // }
+                    const produces = @enumToInt(try reduce_actions(Self, self, @bitCast(u16, reduce), self.state));
+                    state = @bitCast(u16, self.state);
 
                     // Gotos
                     if (goto_table[state].len > 0) {
@@ -116,14 +109,14 @@ pub const Parser = struct {
                         }
                         if (goto > 0) {
                             if(consumes > 0) {
-                                try self.stack.append(StackItem{ .item = token, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
+                                // try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
                                 warn("\n");
                                 self.printStack();
                             }
-                            else {
-                                try self.stack.append(StackItem{ .item = null, .state = @bitCast(i16, @truncate(u16, state)), .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
-                            }
-                            self.state = @bitCast(u16, goto);
+                            // else {
+                            //     try self.stack.append(StackItem{ .item = 0, .state = self.state, .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
+                            // }
+                            self.state = goto;
                             continue :outer;
                         }
                     }

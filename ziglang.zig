@@ -1,5 +1,5 @@
 pub extern "LALR" const zig_grammar = struct {
-    fn Root(MaybeContainerMembers: *Node) ?*Node.Root {}
+    fn Root(MaybeContainerMembers: ?*NodeList) *Node { result = @ptrCast(?*Node, arg1).?; }
 
     // DocComments
     fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
@@ -85,7 +85,8 @@ pub extern "LALR" const zig_grammar = struct {
     fn Statement(IfStatement: *Node) *Node {}
     fn Statement(LabeledStatement: *Node) *Node {}
     fn Statement(SwitchExpr: *Node) *Node {}
-    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn Statement(BlockExprStatement: *Node) *Node {}
+    // fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
 
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
@@ -95,7 +96,7 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn LabeledStatement(LoopStatement: *Node) *Node {}
     fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
-    fn LabeledStatement(BlockExpr: *Node) *Node {}
+    // fn LabeledStatement(BlockExpr: *Node) *Node {}
 
     fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
     fn LoopStatement(MaybeInline: ?*Token, WhileStatement: *Node) *Node {}
@@ -198,7 +199,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
     fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *NodeList, FnCallArguments: *Node) *Node {}
     fn SuffixExpr(PrimaryTypeExpr: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsOrFnCallArguments: *NodeList) *Node {}
+    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsEx: *NodeList) *Node {}
 
     fn PrimaryTypeExpr(Builtin: *Token, Identifier: *Token, FnCallArguments: *Node) *Node {}
     fn PrimaryTypeExpr(CharLiteral: *Token) *Node {}
@@ -389,10 +390,10 @@ pub extern "LALR" const zig_grammar = struct {
     fn PrefixTypeOp(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
     fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
 
-    fn SuffixOpsOrFnCallArguments(SuffixOp: *Node) *NodeList {}
-    fn SuffixOpsOrFnCallArguments(FnCallArguments: *Node) *NodeList {}
-    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *NodeList, SuffixOp: *Node) *NodeList {}
-    fn SuffixOpsOrFnCallArguments(SuffixOpsOrFnCallArguments: *NodeList, FnCallArguments: *Node) *NodeList {}
+    fn SuffixOpsEx(SuffixOp: *Node) *NodeList {}
+    fn SuffixOpsEx(FnCallArguments: *Node) *NodeList {}
+    fn SuffixOpsEx(SuffixOpsEx: *NodeList, SuffixOp: *Node) *NodeList {}
+    fn SuffixOpsEx(SuffixOpsEx: *NodeList, FnCallArguments: *Node) *NodeList {}
 
     fn SuffixOps(SuffixOp: *Node) *NodeList {}
     fn SuffixOps(SuffixOps: *NodeList, SuffixOp: *Node) *NodeList {}

@@ -1212,8 +1212,8 @@ fn shortcutPass(grammar: *Grammar) !void {
         const transition = grammar.transitions.items[i];
 
         var default_reduce: i32 = -1;
-        for(transition) |t| {
-            if(t == 0) continue;
+        for(transition) |t,ti| {
+            if(t == 0 or ti <= grammar.epsilon_index) continue;
 
             // if(t < 0) {
                 if(default_reduce == -1) {
