@@ -32,6 +32,12 @@ pub const SymbolType = struct {
     optional: bool,
 };
 
+pub const PrecedenceType = struct {
+    value: usize,
+    left: bool,
+};
+
+pub const PrecedenceMap = Dictionary(PrecedenceType);
 
 pub const Production = struct {
     terminal: []const u8,
@@ -44,6 +50,8 @@ pub const Production = struct {
     body: []const u8 = "",
     nullable: YesNoMaybe = .Maybe,
     shadowed: bool = false,
+    precedence_value: isize = 0,
+    precedence_left: bool = true,
 
     const Self = @This();
 
@@ -60,10 +68,14 @@ pub const Production = struct {
         self.symbol_types.deinit();
     }
 
-    pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8, type_info: SymbolType) !void {
+    pub fn append(self: *Self, symbol: []const u8, precedence: ?[]const u8, precedence_value: usize, left: bool, type_info: SymbolType) !void {
         if(precedence) |p| {
             if(std.mem.compare(u8, p, "Shadow") == .Equal) {
                 self.shadowed = true;
+            }
+            else {
+                self.precedence_value = @bitCast(isize, precedence_value);
+                self.precedence_left = left;
             }
         }
 
@@ -78,7 +90,7 @@ pub const Production = struct {
         // Check if production is nullable
         if(self.symbols.len == 0) {
             // Traditionally represented in litterature as the greek Epsilon
-            try self.append("$epsilon", null, SymbolType{ .name = "$epsilon", .optional = true });
+            try self.append("$epsilon", null, 0, true, SymbolType{ .name = "$epsilon", .optional = true });
             self.nullable = .Yes;
         }
         self.symbol_ids = try self.symbols.allocator.alloc(usize, self.symbols.len);
@@ -188,7 +200,7 @@ pub const Grammar = struct {
         try self.productions.append(production);
     }
 
-    pub fn finalize(self: *Self) !void {
+    pub fn finalize(self: *Self, precedence_map: ?PrecedenceMap) !void {
         // Iterate all productions and add their terminal symbol to the index mapping
         var it = self.productions.iterator();
         while(it.next()) |production| {
@@ -215,6 +227,19 @@ pub const Grammar = struct {
             }
         }
 
+        var symbol_precedence: []isize = try self.allocator.alloc(isize, self.names_index_map.lookup.size);
+        defer self.allocator.free(symbol_precedence);
+
+        std.mem.set(isize, symbol_precedence, 0);
+        if(precedence_map) |map| {
+            var mit = map.iterator();
+            while(mit.next()) |kv| {
+                if(self.names_index_map.indexOf(kv.key)) |index| {
+                    symbol_precedence[index] = if(kv.value.left) @bitCast(isize, kv.value.value) else -@bitCast(isize, kv.value.value);
+                }
+            }
+        }
+
         // Calculate which productions and terminals have the nullability property
         const terminal_nullability = try nullabilityPass(self);
         defer self.allocator.free(terminal_nullability);
@@ -229,7 +254,7 @@ pub const Grammar = struct {
         }
 
         // Build the isocore set
-        self.transitions = try isocorePass(self, terminal_nullability, follow_sets);
+        self.transitions = try isocorePass(self, terminal_nullability, follow_sets, symbol_precedence);
 
         // Optimize gotos
         try shortcutPass(self);
@@ -264,8 +289,8 @@ pub const Grammar = struct {
         errdefer production.deinit();
 
         // Build the production
-        try production.append(name, null, terminal_type);
-        try production.append("$eof", null, SymbolType{ .name = "$eof", .optional = false });
+        try production.append(name, null, 0, true, terminal_type);
+        try production.append("$eof", null, 0, true, SymbolType{ .name = "$eof", .optional = false });
         try production.finalize();
 
         // Append it to the grammar
@@ -703,7 +728,7 @@ const IsocorePair = struct {
 
 const IsocorePairSet = FlatHash.Set(IsocorePair, null, IsocorePair.hash, IsocorePair.equal);
 
-fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet) !ArrayList([]i32) {
+fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_sets: []FirstFollowSet, precedence: []isize) !ArrayList([]i32) {
     // Counters for conflict types
     var shift_reduce_conflicts: usize = 0;
     var reduce_reduce_conflicts: usize = 0;
@@ -976,15 +1001,55 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                             // // TODO: this can actually be deduced from the grammar
                             if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
                                 const Else = key == grammar.names_index_map.indexOf("Keyword_else").?;
-                                warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                warn("\x1b[31mResolved Shift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
                                 if(!Else) {
                                     transition[key] = -@intCast(i32, pair.production_id);
                                 }
                             }
                             else {
-                                warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                shift_reduce_conflicts += 1;
-                                has_conflicts = true;
+                                if(production.precedence_value != 0 and precedence[key] != 0) {
+                                    // Resolve with precedence
+                                    if(production.precedence_left) {
+                                        if(precedence[key] > 0) {
+                                            // left vs left
+                                            if(production.precedence_value >= precedence[key]) {
+                                                // reduce
+                                                transition[key] = -@intCast(i32, pair.production_id);
+                                            }
+                                        }
+                                        else {
+                                            // left vs right
+                                            if(production.precedence_value >= -precedence[key]) {
+                                                // reduce
+                                                transition[key] = -@intCast(i32, pair.production_id);
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        if(precedence[key] > 0) {
+                                            // right vs left
+                                            if(production.precedence_value >= precedence[key]) {
+                                                // reduce
+                                                transition[key] = -@intCast(i32, pair.production_id);
+                                            }
+                                        }
+                                        else {
+                                            // right vs right
+                                            if(production.precedence_value > -precedence[key]) {
+                                                // reduce
+                                                transition[key] = -@intCast(i32, pair.production_id);
+                                            }
+                                        }
+                                    }
+                                }
+                                else if(production.precedence_value != 0 or precedence[key] != 0) {
+                                    // shift when precedence is missing
+                                }
+                                else {
+                                    warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                    shift_reduce_conflicts += 1;
+                                    has_conflicts = true;
+                                }
                             }
                         }
                         else {

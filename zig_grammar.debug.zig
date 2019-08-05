@@ -15,6 +15,8 @@ pub fn idToString(id: Id) []const u8 {
         .Colon                              => return ":",
         .Comma                              => return ",",
         .Period                             => return ".",
+        .PeriodAsterisk                     => return ".*",
+        .PeriodQuestionMark                 => return ".?",
         .Ellipsis2                          => return "..",
         .Ellipsis3                          => return "...",
         .Equal                              => return "=",

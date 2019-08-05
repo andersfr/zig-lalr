@@ -5,13 +5,55 @@ const String = @import("string.zig").String;
 const Grammar = @import("grammar.zig").Grammar;
 const Production = @import("grammar.zig").Production;
 const SymbolType = @import("grammar.zig").SymbolType;
+const PrecedenceType = @import("grammar.zig").PrecedenceType;
+const PrecedenceMap = @import("grammar.zig").PrecedenceMap;
 
 const Node = std.zig.ast.Node;
 
 const default_heap = std.heap.c_allocator;
 
-fn parsePrecedence(proto: *Node.VarDecl) void {
-    // warn("precedence\n");
+fn parsePrecedence(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.VarDecl) !PrecedenceMap {
+    var dict = PrecedenceMap.init(default_heap);
+    errdefer dict.deinitAndFreeKeys();
+
+    const name = tree.tokens.at(proto.name_token);
+    if(std.mem.compare(u8, buffer[name.start..name.end], "Precedence") != .Equal) return error.NotPrecedence;
+
+    const init = proto.init_node orelse return error.NotPrecedence;
+    const cont = init.cast(Node.ContainerDecl) orelse return error.NotPrecedence;
+
+    var precedence: usize = 0;
+
+    var fit = cont.fields_and_decls.iterator(0);
+    while(fit.next()) |fld| {
+        const field = fld.*.cast(Node.ContainerField) orelse return error.NotPrecedence;
+        const field_name = tree.tokens.at(field.name_token);
+        const assoc = buffer[field_name.start..field_name.end];
+
+        const left = std.mem.compare(u8, assoc, "left") == .Equal;
+        if(!left and std.mem.compare(u8, assoc, "right") != .Equal)
+            return error.WrongAssociativity;
+
+        const type_expr = field.type_expr orelse return error.NoPrecedenceEnum;
+        const enum_decl = type_expr.cast(Node.ContainerDecl) orelse return error.NoPrecedenceEnum;
+
+        precedence += 1;
+
+        var eit = enum_decl.fields_and_decls.iterator(0);
+        while(eit.next()) |val| {
+            const value = val.*.cast(Node.ContainerField) orelse return error.NotPrecedence;
+            const value_name = tree.tokens.at(value.name_token);
+            const symbol = buffer[value_name.start..value_name.end];
+            const result = try dict.insert(symbol);
+            if(result.is_new) {
+                result.kv.value = PrecedenceType{ .value = precedence, .left = left };
+            }
+            else {
+                return error.DuplicatePrecedence;
+            }
+        }
+    }
+    return dict;
 }
 
 fn parseSymbolType(tree: *std.zig.ast.Tree, buffer: []const u8, node: *Node) !SymbolType {
@@ -52,7 +94,7 @@ fn parseSymbolType(tree: *std.zig.ast.Tree, buffer: []const u8, node: *Node) !Sy
     return error.InvalidSymbolType;
 }
 
-fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnProto) !*Production {
+fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnProto, precedence_map: ?PrecedenceMap) !*Production {
     var prod_name: []const u8 = undefined;
     if (proto.name_token) |name_token| {
         const name = tree.tokens.at(name_token);
@@ -104,7 +146,14 @@ fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnP
                                 if(call.params.len == 1) {
                                     const symbol_type = try parseSymbolType(tree, buffer, @intToPtr(*Node, @ptrToInt(call.params.at(0).*)));
                                     // Append the parameter name
-                                    try prod.append(param_str, precedence_str, symbol_type);
+                                    if(precedence_map) |map| {
+                                        const result = map.find(precedence_str);
+                                        if(result) |kv| {
+                                            try prod.append(param_str, precedence_str, kv.value.value, kv.value.left, symbol_type);
+                                            continue;
+                                        }
+                                    }
+                                    try prod.append(param_str, precedence_str, 0, true, symbol_type);
                                 }
                             },
                             else => {}
@@ -113,7 +162,14 @@ fn parseProduction(tree: *std.zig.ast.Tree, buffer: []const u8, proto: *Node.FnP
                 }
                 else {
                     const symbol_type = try parseSymbolType(tree, buffer, decl.type_node);
-                    try prod.append(param_str, null, symbol_type);
+                    if(precedence_map) |map| {
+                        const result = map.find(param_str);
+                        if(result) |kv| {
+                            try prod.append(param_str, kv.key, kv.value.value, kv.value.left, symbol_type);
+                            continue;
+                        }
+                    }
+                    try prod.append(param_str, null, 0, true, symbol_type);
                 }
             }
         }
@@ -126,18 +182,21 @@ fn parseGrammar(name: []const u8, tree: *std.zig.ast.Tree, buffer: []const u8, c
     var grammar = Grammar.init(default_heap, name);
     errdefer grammar.deinit();
 
+    var precedence_map: ?PrecedenceMap = null;
+    defer if(precedence_map) |*p| p.deinitAndFreeKeys();
+
     var g = container.fields_and_decls.iterator(0);
     while (g.next()) |fld| {
         if (fld.*.cast(Node.VarDecl)) |precedence| {
-            parsePrecedence(precedence);
+            precedence_map = try parsePrecedence(tree, buffer, precedence);
         }
-        if (fld.*.cast(Node.FnProto)) |production| {
-            const prod = try parseProduction(tree, buffer, production);
+        else if (fld.*.cast(Node.FnProto)) |production| {
+            const prod = try parseProduction(tree, buffer, production, precedence_map);
             try grammar.append(prod);
         }
     }
 
-    try grammar.finalize();
+    try grammar.finalize(precedence_map);
     return grammar;
 }
 
@@ -273,7 +332,7 @@ fn writeGrammar(grammar: Grammar) !void {
             \\    Terminal: TerminalId,
             \\};
             \\
-            \\pub fn reduce_actions(comptime Parser: type, parser: *Parser, rule: usize, state: i16) !TerminalId {
+            \\pub fn reduce_actions(comptime Parser: type, parser: *Parser, rule: isize, state: i16) !TerminalId {
             \\    switch(rule) {
             \\
         );
@@ -302,6 +361,7 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.print(" " ** 12 ++ "// Symbol: {}\n", grammar.names_index_map.keyOf(production.symbol_ids[ti]));
                 // try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
                 try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
+                try out.stream.print(" " ** 12 ++ "const val{} = parser.stack.items[parser.stack.len - {}].value;\n", ti+1, production.symbol_types.len - ti);
             }
             try out.stream.write("\n");
             if(production.consumes == 1) {
@@ -331,7 +391,8 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.print(".{} ", production.terminal);
                 try out.stream.write("};\n");
                 if(production.body.len > 0 or production.consumes > 1 or std.mem.compare(u8, production.terminal_type.name, production.symbol_types.items[0].name) != .Equal) {
-                    try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = @ptrToInt(result);\n");
+                    // try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = @ptrToInt(result);\n");
+                    try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = 0x42424242;\n");
                 }
             }
             try out.stream.print(" " ** 12 ++ "return TerminalId.{};\n", production.terminal);

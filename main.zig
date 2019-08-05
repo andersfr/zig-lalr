@@ -39,8 +39,8 @@ pub const Parser = struct {
 
     pub const Stack = std.ArrayList(StackItem);
 
-    pub fn action(self: *Self, token: *Token) !bool {
-        const id = @intCast(i16, @enumToInt(token.id));
+    pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
+        const id = @intCast(i16, @enumToInt(token_id));
 
         outer: while (true) {
             var state: usize = @bitCast(u16, self.state);
@@ -64,7 +64,7 @@ pub const Parser = struct {
                 }
                 if (shift > 0) {
                     warn("{} ", idToString(token.id));
-                    try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token.id } });
+                    try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token_id } });
                     self.state = shift;
                     return true;
                 }
@@ -89,7 +89,7 @@ pub const Parser = struct {
                     // while (pop > 0) : (pop -= 1) {
                     //     self.state = self.stack.pop().state;
                     // }
-                    const produces = @enumToInt(try reduce_actions(Self, self, @bitCast(u16, reduce), self.state));
+                    const produces = @enumToInt(try reduce_actions(Self, self, reduce, self.state));
                     state = @bitCast(u16, self.state);
 
                     // Gotos
@@ -126,7 +126,7 @@ pub const Parser = struct {
             }
             break;
         }
-        if(self.stack.len == 1 and token.id == .Eof) {
+        if(self.stack.len == 1 and token_id == .Eof) {
             switch(self.stack.at(0).value) {
                 .Terminal => |terminal_id| {
                     if(terminal_id == .Root)
@@ -166,7 +166,7 @@ pub fn main() !void {
         }
         if(token.id == .LineComment) continue;
 
-        if(!try parser.action(&token)) {
+        if(!try parser.action(token.id, &token)) {
             std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
         }

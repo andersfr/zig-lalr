@@ -16,6 +16,8 @@
 // %token Colon                              %dfa :
 // %token Comma                              %dfa ,
 // %token Period                             %dfa \.
+// %token PeriodAsterisk                     %dfa \.\*
+// %token PeriodQuestionMark                 %dfa \.\?
 // %token Ellipsis2                          %dfa \.\.
 // %token Ellipsis3                          %dfa \.\.\.
 // %token Equal                              %dfa =

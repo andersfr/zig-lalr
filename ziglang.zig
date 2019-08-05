@@ -1,5 +1,113 @@
 pub extern "LALR" const zig_grammar = struct {
-    fn Root(MaybeContainerMembers: ?*NodeList) *Node { result = @ptrCast(?*Node, arg1).?; }
+    const Precedence = struct {
+        right: enum {
+            Precedence_enumlit,
+        },
+        left: enum {
+            // AssignOp
+            Equal,
+            AsteriskEqual,
+            SlashEqual,
+            PercentEqual,
+            PlusEqual,
+            MinusEqual,
+            AngleBracketAngleBracketLeftEqual,
+            AngleBracketAngleBracketRightEqual,
+            AmpersandEqual,
+            CaretEqual,
+            PipeEqual,
+            AsteriskPercentEqual,
+            PlusPercentEqual,
+            MinusPercentEqual,
+        },
+        right: enum {
+            Keyword_break,
+            Keyword_return,
+            Keyword_continue,
+            Keyword_resume,
+            Keyword_cancel,
+            Keyword_comptime,
+            Keyword_promise,
+        },
+        left: enum {
+            Keyword_or,
+        },
+        left: enum {
+            Keyword_and,
+        },
+        left: enum {
+            // CompareOp
+            EqualEqual,
+            BangEqual,
+            AngleBracketLeft,
+            AngleBracketRight,
+            AngleBracketLeftEqual,
+            AngleBracketRightEqual,
+        },
+        left: enum {
+            Keyword_orelse,
+            Keyword_catch,
+        },
+        left: enum {
+            // Bitwise OR
+            Pipe,
+        },
+        left: enum {
+            // Bitwise XOR
+            Caret,
+        },
+        left: enum {
+            // Bitwise AND
+            Ampersand,
+        },
+        left: enum {
+            AngleBracketAngleBracketLeft,
+            AngleBracketAngleBracketRight,
+        },
+        left: enum {
+            Plus,
+            Minus,
+            PlusPlus,
+            PlusPercent,
+            MinusPercent,
+        },
+        left: enum {
+            Asterisk,
+            Slash,
+            Percent,
+            AsteriskAsterisk,
+            AsteriskPercent,
+            PipePipe,
+        },
+        right: enum {
+            Keyword_try,
+            Keyword_await,
+
+            Precedence_not,
+            Precedence_neg,
+            Tilde,
+            Precedence_ref,
+            QuestionMark,
+        },
+        right: enum {
+            // x{} initializer
+            LBrace,
+            // x.* x.?
+            PeriodAsterisk,
+            PeriodQuestionMark,
+        },
+        left: enum {
+            // a!b
+            Bang,
+        },
+        right: enum {
+            LParen,
+            LBracket,
+            Period,
+        },
+    };
+
+    fn Root(MaybeContainerMembers: ?*NodeList) *Node {}
 
     // DocComments
     fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
@@ -7,8 +115,10 @@ pub extern "LALR" const zig_grammar = struct {
     fn DocCommentLines(DocComment: *Token) *NodeList {}
 
     // Containers
-    fn MaybeContainerMembers() ?*NodeList {}
-    fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList {}
+    fn MaybeContainerMembers() ?*NodeList;
+    fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList {
+        result = arg1;
+    }
     // Note: these exist to allow a trailing container field without comma
     fn MaybeContainerMembers(MaybePub: ?*Token, ContainerField: *Node) *Node {}
     fn MaybeContainerMembers(DocCommentLines: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
@@ -20,8 +130,8 @@ pub extern "LALR" const zig_grammar = struct {
     fn ContainerMembers(ContainerMember: *Node) *NodeList {}
     fn ContainerMembers(ContainerMemberWithDocComment: *Node) *NodeList {}
 
-    fn ContainerMember(TestDecl: *Node) *Node {}
-    fn ContainerMember(TopLevelComptime: *Node) *Node {}
+    fn ContainerMember(TestDecl: *Node) *Node;
+    fn ContainerMember(TopLevelComptime: *Node) *Node;
     fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
     fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
 
@@ -32,34 +142,28 @@ pub extern "LALR" const zig_grammar = struct {
     fn TopLevelComptime(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
 
     // TopLevel declarations
-    fn TopLevelDecl(MaybeExternPackage: ?*Node, FnProto: *Node, SemicolonOrBlock: ?*Node) *Node {}
-    fn TopLevelDecl(MaybeExportInline: ?*Token, FnProto: *Node, SemicolonOrBlock: ?*Node) *Node {}
-    fn TopLevelDecl(MaybeExternPackage: ?*Node, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
-    fn TopLevelDecl(MaybeExportExtern: ?*Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(FnProto: *Node, Block: *Node) *Node {}
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Block: *Node) *Node {}
+    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node, Block: *Node) *Node {}
+    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node, Block: *Node) *Node {}
+    fn TopLevelDecl(MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(Keyword_export: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
+    fn TopLevelDecl(Keyword_extern: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
     fn TopLevelDecl(Keyword_usingnamespace: *Token, Expr: *Node, Semicolon: *Token) *Node {}
-    // TODO: Keyword_use is deprecated
     fn TopLevelDecl(Keyword_use: *Token, Expr: *Node, Semicolon: *Token) *Node {}
 
-    // TopLevel binding types
-    fn MaybeExternPackage() ?*Node {}
-    fn MaybeExternPackage(Keyword_extern: *Token, StringLiteral: *Token) ?*Node {}
-
-    fn MaybeExportExtern() ?*Token {}
-    fn MaybeExportExtern(Keyword_export: *Token) ?*Token {}
-    fn MaybeExportExtern(Keyword_extern: *Token) ?*Token {}
-
-    fn MaybeExportInline() ?*Token {}
-    fn MaybeExportInline(Keyword_export: *Token) ?*Token {}
-    fn MaybeExportInline(Keyword_inline: *Token) ?*Token {}
-
-    fn MaybeThreadlocal() ?*Token {}
-    fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token {}
+    fn MaybeThreadlocal() ?*Token;
+    fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token;
 
     // Functions
-    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
-    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
-    fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
-    fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node {}
+    // fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, Keyword_var: *Token) *Node {}
+    // fn FnProto(AsyncPrefix: *Node, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: *Token, MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeBang: ?*Token, TypeExpr: *Node) *Node {}
 
     // Variables
     fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
@@ -69,23 +173,25 @@ pub extern "LALR" const zig_grammar = struct {
     fn ContainerField(Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeEqualExpr: ?*Node) *Node {}
 
     // Statements
-    fn MaybeStatements() ?*NodeList {}
-    fn MaybeStatements(Statements: *Node) ?*NodeList {}
+    fn MaybeStatements() ?*NodeList;
+    fn MaybeStatements(Statements: *NodeList) ?*NodeList;
 
     fn Statements(Statement: *Node) *NodeList {}
     fn Statements(Statements: *NodeList, Statement: *Node) *NodeList {}
 
     fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {}
-    fn Statement(VarDecl: *Node) *Node {}
+    fn Statement(VarDecl: *Node) *Node;
     fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
     fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {}
     fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {}
     fn Statement(Keyword_errdefer: *Token, BlockExprStatement: *Node) *Node {}
-    fn Statement(IfStatement: *Node) *Node {}
-    fn Statement(LabeledStatement: *Node) *Node {}
-    fn Statement(SwitchExpr: *Node) *Node {}
-    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {}
+    fn Statement(IfStatement: *Node) *Node;
+    fn Statement(LabeledStatement: *Node) *Node;
+    fn Statement(SwitchExpr: *Node) *Node;
+    fn Statement(AssignExpr: *Node, Semicolon: *Token) *Node {
+        result = arg1;
+    }
 
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
     fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
@@ -93,9 +199,9 @@ pub extern "LALR" const zig_grammar = struct {
     fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
     fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node {}
 
-    fn LabeledStatement(LoopStatement: *Node) *Node {}
+    fn LabeledStatement(LoopStatement: *Node) *Node;
     fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
-    fn LabeledStatement(BlockExpr: *Node) *Node {}
+    fn LabeledStatement(BlockExpr: *Node) *Node;
 
     fn LoopStatement(MaybeInline: ?*Token, ForStatement: *Node) *Node {}
     fn LoopStatement(MaybeInline: ?*Token, WhileStatement: *Node) *Node {}
@@ -111,138 +217,162 @@ pub extern "LALR" const zig_grammar = struct {
     fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
     fn WhileStatement(WhilePrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
 
-    fn BlockExprStatement(BlockExpr: *Node) *Node {}
-    fn BlockExprStatement(AssignExpr: *Node, Semicolon: *Token) *Node {}
-
-    fn BlockExpr(Block: *Node) *Node {}
-    fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
+    fn BlockExprStatement(BlockExpr: *Node) *Node;
+    fn BlockExprStatement(AssignExpr: *Node, Semicolon: *Token) *Node {
+        result = arg1;
+    }
 
     // Expression level
-    fn AssignExpr(TypeExpr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
-    fn AssignExpr(Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node) *Node;
 
-    fn MaybeEqualExpr() ?*Node {}
-    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {}
+    fn MaybeEqualExpr() ?*Node;
+    fn MaybeEqualExpr(Equal: *Token, Expr: *Node) ?*Node {
+        result = arg2;
+    }
 
-    // Note: this should be deprecated
-    // fn Expr(Keyword_try: *Token, BoolOrExpr: *Node) *Node {}
-    fn Expr(BoolOrExpr: *Node) *Node {}
+    // Grouped
+    fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
 
-    fn BoolOrExpr(BoolAndExpr: *Node) *Node {}
-    fn BoolOrExpr(BoolOrExpr: *Node, Keyword_or: *Token, BoolAndExpr: *Node) *Node {}
-    
-    fn BoolAndExpr(BoolCompareExpr: *Node) *Node {}
-    fn BoolAndExpr(BoolAndExpr: *Node, Keyword_and: *Token, BoolCompareExpr: *Node) *Node {}
+    // Infix
+    fn Expr(Expr: *Node, Keyword_orelse: *Token, Expr: *Node) *Node {}
+    fn Expr(Expr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, Expr: *Node) *Node {}
+    fn Expr(Expr: *Node, Keyword_or: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Keyword_and: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, EqualEqual: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, BangEqual: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketLeft: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketRight: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketLeftEqual: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketRightEqual: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Pipe: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Caret: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Ampersand: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketAngleBracketLeft: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AngleBracketAngleBracketRight: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Plus: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Minus: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, PlusPlus: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, PlusPercent: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, MinusPercent: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Asterisk: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Slash: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Percent: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AsteriskAsterisk: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, AsteriskPercent: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, PipePipe: *Token, Expr: *Node) *Node;
 
-    fn BoolCompareExpr(BitwiseExpr: *Node) *Node {}
-    fn BoolCompareExpr(BoolCompareExpr: *Node, CompareOp: *Token, BitwiseExpr: *Node) *Node {}
+    // Prefix
+    fn Expr(Bang: Precedence_not(*Token), Expr: *Node) *Node;
+    fn Expr(Minus: Precedence_neg(*Token), Expr: *Node) *Node;
+    fn Expr(Tilde: *Token, Expr: *Node) *Node;
+    fn Expr(Ampersand: Precedence_ref(*Token), Expr: *Node) *Node;
+    fn Expr(Keyword_try: *Token, Expr: *Node) *Node;
+    fn Expr(Keyword_await: *Token, Expr: *Node) *Node;
+    fn Expr(Keyword_comptime: *Token, Expr: *Node) *Node {}
 
-    fn BitwiseExpr(BitShiftExpr: *Node) *Node {}
-    fn BitwiseExpr(BitwiseExpr: *Node, BitwiseOp: *Token, BitShiftExpr: *Node) *Node {}
-    fn BitwiseExpr(BitwiseExpr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, BitShiftExpr: *Node) *Node {}
-
-    fn BitShiftExpr(AdditionExpr: *Node) *Node {}
-    fn BitShiftExpr(BitShiftExpr: *Node, BitShiftOp: *Token, AdditionExpr: *Node) *Node {}
-
-    fn AdditionExpr(MultiplyExpr: *Node) *Node {}
-    fn AdditionExpr(AdditionExpr: *Node, AdditionOp: *Token, MultiplyExpr: *Node) *Node {}
-
-    fn MultiplyExpr(PrefixExpr: *Node) *Node {}
-    fn MultiplyExpr(MultiplyExpr: *Node, MultiplyOp: *Token, PrefixExpr: *Node) *Node {}
-
-    fn PrefixExpr(PrefixOp: *Token, PrefixExpr: *Node) *Node {}
-    fn PrefixExpr(PrimaryExpr: *Node) *Node {}
-
-    fn PrimaryExpr(AsmExpr: *Node) *Node {}
-    fn PrimaryExpr(Keyword_resume: *Token, Expr: *Node) *Node {}
-    fn PrimaryExpr(Keyword_cancel: *Token, Expr: *Node) *Node {}
-    fn PrimaryExpr(Keyword_break: *Token) *Node {}
-    fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token) *Node {}
-    fn PrimaryExpr(Keyword_break: *Token, Expr: *Node) *Node {}
-    fn PrimaryExpr(Keyword_break: *Token, BreakLabel: *Token, Expr: *Node) *Node {}
-    fn PrimaryExpr(Keyword_continue: *Token) *Node {}
-    fn PrimaryExpr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
-    fn PrimaryExpr(Keyword_return: *Token) *Node {}
-    fn PrimaryExpr(Keyword_return: *Token, Expr: *Node) *Node {}
-    // Note: IfExpr and IfTypeExpr are combined to avoid conflicts
-    // fn PrimaryExpr(IfExpr: *Node) *Node {}
-    // fn PrimaryExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
-    // Note: this makes no sense as TypeExpr already implements BlockExpr
-    // fn PrimaryExpr(Block: *Node) *Node {}
-    // fn PrimaryExpr(LoopExpr: *Node) *Node {}
-    // fn PrimaryExpr(BlockLabel: *Token, LoopExpr: *Node) *Node {}
-    fn PrimaryExpr(CurlySuffixExpr: *Node) *Node {}
-
-    fn IfExpr(IfPrefix: *Node, Expr: *Node) *Node {}
-    fn IfExpr(IfPrefix: *Node, Expr: *Node, ElseExpr: *Node) *Node {}
-    fn ElseExpr(Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {}
-
-    fn Block(LBrace: *Token, MaybeStatements: ?*Node, RBrace: *Token) *Node {}
-
-    // Note: LoopExpr should be deprecated
-
-    fn CurlySuffixExpr(TypeExpr: *Node) *Node {}
-    fn CurlySuffixExpr(TypeExpr: *Node, InitList: *Node) *Node {}
+    // Primary
+    fn Expr(AsmExpr: *Node) *Node;
+    fn Expr(Keyword_resume: *Token, Expr: *Node) *Node {}
+    fn Expr(Keyword_cancel: *Token, Expr: *Node) *Node {}
+    fn Expr(Keyword_break: *Token) *Node {}
+    fn Expr(Keyword_break: *Token, BreakLabel: *Token) *Node {}
+    fn Expr(Keyword_break: *Token, Expr: *Node) *Node {}
+    fn Expr(Keyword_break: *Token, BreakLabel: *Token, Expr: *Node) *Node {}
+    fn Expr(Keyword_continue: *Token) *Node {}
+    fn Expr(Keyword_continue: *Token, BreakLabel: *Token) *Node {}
+    fn Expr(Keyword_return: *Token) *Node {}
+    fn Expr(Keyword_return: *Token, Expr: *Node) *Node {}
 
     // Initializer list
-    fn InitList(LBrace: *Token, RBrace: *Token) *Node {}
-    fn InitList(LBrace: *Token, FieldInits: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
-    fn InitList(LBrace: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+    fn Expr(Identifier: *Token, LBrace: *Token, MaybeInitList: ?*NodeList, RBrace: *Token) *Node {}
 
-    fn TypeExpr(PrefixTypeOps: *Node, ErrorUnionExpr: *Node) *Node {}
-    fn TypeExpr(ErrorUnionExpr: *Node) *Node {}
+    // Prefix
+    fn Expr(QuestionMark: *Token, Expr: *Node) *Node;
+    fn Expr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, Expr: *Node) *Node {}
+    // ArrayType
+    fn Expr(LBracket: *Token, Expr: *Node, RBracket: *Token, Expr: *Node) *Node {}
+    // SliceType
+    fn Expr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    // PtrType
+    fn Expr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    fn Expr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    fn Expr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    fn Expr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
 
-    fn ErrorUnionExpr(SuffixExpr: *Node) *Node {}
-    fn ErrorUnionExpr(SuffixExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node {}
+    // Block
+    fn Expr(BlockExpr: Shadow(*Node)) *Node;
+    fn BlockExpr(Block: *Node) *Node;
+    fn BlockExpr(BlockLabel: *Token, Block: *Node) *Node {}
+    fn Block(LBrace: *Token, MaybeStatements: ?*Node, RBrace: *Token) *Node {}
+    fn BlockLabel(Identifier: *Token, Colon: *Token) *Token {}
 
-    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, FnCallArguments: *Node) *Node {}
-    fn SuffixExpr(AsyncPrefix: *Node, PrimaryTypeExpr: *Node, SuffixOps: *NodeList, FnCallArguments: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node) *Node {}
-    fn SuffixExpr(PrimaryTypeExpr: *Node, SuffixOpsEx: *NodeList) *Node {}
+    // ErrorType
+    fn Expr(Expr: *Node, Bang: *Token, Expr: *Node) *Node {}
 
-    fn PrimaryTypeExpr(Builtin: *Token, Identifier: *Token, FnCallArguments: *Node) *Node {}
-    fn PrimaryTypeExpr(CharLiteral: *Token) *Node {}
-    fn PrimaryTypeExpr(ContainerDecl: *Node) *Node {}
-    fn PrimaryTypeExpr(Period: *Token, Identifier: *Token) *Node {}
-    fn PrimaryTypeExpr(ErrorSetDecl: *Node) *Node {}
-    fn PrimaryTypeExpr(FloatLiteral: *Token) *Node {}
-    fn PrimaryTypeExpr(FnProto: *Node) *Node {}
-    fn PrimaryTypeExpr(GroupedExpr: *Node) *Node {}
-    // Note: LabeledTypeExpr should be replaced with BlockExpr
-    fn PrimaryTypeExpr(BlockExpr: Shadow(*Node)) *Node {}
-    fn PrimaryTypeExpr(Identifier: *Token) *Node {}
-    // Note: IfExpr and IfTypeExpr were combined to avoid conflicts
-    fn PrimaryTypeExpr(IfExpr: *Node) *Node {}
-    fn PrimaryTypeExpr(IntegerLiteral: *Token) *Node {}
-    // fn PrimaryTypeExpr(Keyword_comptime: *Token, TypeExpr: *Node) *Node {}
-    fn PrimaryTypeExpr(Keyword_comptime: *Token, Expr: *Node) *Node {}
-    fn PrimaryTypeExpr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_false: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_null: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_promise: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_true: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_undefined: *Token) *Node {}
-    fn PrimaryTypeExpr(Keyword_unreachable: *Token) *Node {}
-    fn PrimaryTypeExpr(StringLiteral: *Token) *Node {}
-    fn PrimaryTypeExpr(MultilineStringLiteral: *NodeList) *Node {}
-    fn PrimaryTypeExpr(MultilineCStringLiteral: *NodeList) *Node {}
-    fn PrimaryTypeExpr(SwitchExpr: Shadow(*Node)) *Node {}
+    // Async
+    // fn Expr(Keyword_async: *Token, Expr: *Node) *Node {}
+    // fn Expr(Keyword_async: *Token, AngleBracketLeft: Precedence_none(*Token), Expr: *Node, AngleBracketRight: Precedence_none(*Token), Expr: *Node) *Node {}
 
-    // Note: ContainerDeclAuto has been inlined
+    // Literals
+    fn Expr(Identifier: *Token) *Node {}
+    fn Expr(CharLiteral: *Token) *Node {}
+    fn Expr(FloatLiteral: *Token) *Node {}
+    fn Expr(IntegerLiteral: *Token) *Node {}
+    fn Expr(StringLiteral: *Token) *Node {}
+    fn Expr(MultilineStringLiteral: *NodeList) *Node {}
+    fn Expr(MultilineCStringLiteral: *NodeList) *Node {}
+    fn Expr(Period: Precedence_enumlit(*Token), Identifier: *Token) *Node {}
+    // fn Expr(Period: Precedence_enumlit(*Token), Identifier: *Token, Equal: Precedence_enumlit(*Token), Expr: *Node) *Node {}
+
+    // Simple types
+    fn Expr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {}
+    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), RBrace: *Token) *Node {}
+    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), IdentifierList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
+    fn Expr(Keyword_false: *Token) *Node {}
+    fn Expr(Keyword_true: *Token) *Node {}
+    fn Expr(Keyword_null: *Token) *Node {}
+    fn Expr(Keyword_undefined: *Token) *Node {}
+    fn Expr(Keyword_unreachable: *Token) *Node {}
+
+    // Flow types
+    fn Expr(SwitchExpr: Shadow(*Node)) *Node;
+    // IfExpr
+    fn Expr(IfPrefix: *Node, Expr: *Node) *Node {}
+    fn Expr(IfPrefix: *Node, Expr: *Node, Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {}
+
+    // Function calls
+    fn Expr(Builtin: *Token, Identifier: *Token, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+    fn Expr(Expr: *Node, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+
+    // FunctionType
+    fn Expr(FnProto: *Node) *Node;
+
+    // Array
+    fn Expr(Expr: *Node, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn Expr(Expr: *Node, LBracket: *Token, Expr: *Node, RBracket: *Token, MultiArray: *Node) *Node {}
+    fn Expr(Expr: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
+    fn Expr(Expr: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn MultiArray(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    fn MultiArray(LBracket: *Token, Expr: *Node, RBracket: *Token, MultiArray: *Node) *Node {}
+    fn MultiArray(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
+    fn MultiArray(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {}
+    // a.b
+    fn Expr(Expr: *Node, Period: *Token, Expr: *Node) *Node {}
+    // a.*
+    fn Expr(Expr: *Node, PeriodAsterisk: *Token) *Node {}
+    // a.?
+    fn Expr(Expr: *Node, PeriodQuestionMark: *Token) *Node {}
+
+    // Containers (struct/enum/union)
+    fn Expr(ContainerDecl: *Node) *Node;
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclOp: *Token, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
     fn ContainerDecl(MaybeExternPacked: ?*Token, ContainerDeclType: *Node, LBrace: *Token, MaybeContainerMembers: ?*NodeList, RBrace: *Token) *Node {}
 
     // ContainerDecl helper
-    fn MaybeExternPacked() ?*Token {}
-    fn MaybeExternPacked(Keyword_extern: *Token) ?*Token {}
-    fn MaybeExternPacked(Keyword_packed: *Token) ?*Token {}
-
-    fn ErrorSetDecl(Keyword_error: *Token, LBrace: *Token, RBrace: *Token) *Node {}
-    fn ErrorSetDecl(Keyword_error: *Token, LBrace: *Token, IdentifierList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
-
-    fn GroupedExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
-
-    // Note: LabeledTypeExpr has been deprecated
+    fn MaybeExternPacked() ?*Token;
+    fn MaybeExternPacked(Keyword_extern: *Token) ?*Token;
+    fn MaybeExternPacked(Keyword_packed: *Token) ?*Token;
 
     fn SwitchExpr(Keyword_switch: *Token, LParen: *Token, Expr: *Node, RParen: *Token, LBrace: *Token, SwitchProngList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {}
 
@@ -255,7 +385,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {}
 
     fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {}
-    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, Expr: *Node, RParen: *Token) *Node {}
 
     fn AsmInput(Colon: *Token, AsmInputList: *NodeList) *Node {}
     fn AsmInput(Colon: *Token, AsmInputList: *NodeList, AsmClobber: *Node) *Node {}
@@ -268,30 +398,26 @@ pub extern "LALR" const zig_grammar = struct {
 
     // Helper grammar
     fn BreakLabel(Colon: *Token, Identifier: *Token) ?*Token {}
-    fn BlockLabel(Identifier: *Token, Colon: *Token) *Token {}
-
-    fn FieldInits(FieldInit: *Node) *NodeList {}
-    fn FieldInits(FieldInits: *NodeList, Comma: *Token, FieldInit: *Node) *NodeList {}
-
-    fn FieldInit(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *Node {}
 
     fn WhileContinueExpr(Colon: *Token, LParen: *Token, AssignExpr: *Node, RParen: *Token) *Node {}
 
-    fn MaybeLinkSection() ?*Node {}
+    fn MaybeLinkSection() ?*Node;
     fn MaybeLinkSection(Keyword_linksection: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
 
     // Function specific
-    fn MaybeFnCC() ?*Token {}
-    fn MaybeFnCC(Keyword_nakedcc: *Token) ?*Token {}
-    fn MaybeFnCC(Keyword_stdcallcc: *Token) ?*Token {}
-    fn MaybeFnCC(Keyword_extern: *Token) ?*Token {}
+    fn MaybeFnCC() ?*Token;
+    fn MaybeFnCC(Keyword_nakedcc: *Token) ?*Token;
+    fn MaybeFnCC(Keyword_stdcallcc: *Token) ?*Token;
+    fn MaybeFnCC(Keyword_extern: *Token) ?*Token;
+    fn MaybeFnCC(Keyword_async: *Token) ?*Token;
 
-    fn ParamDecl(MaybeNoaliasComptime: ?*Token, ParamType: *Node) *Node {}
-    fn ParamDecl(MaybeNoaliasComptime: ?*Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
+    fn ParamDecl(MaybeNoalias: ?*Token, ParamType: *Node) *Node {}
+    fn ParamDecl(MaybeNoalias: ?*Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
+    fn ParamDecl(MaybeNoalias: ?*Token, Keyword_comptime: *Token, Identifier: *Token, Colon: *Token, ParamType: *Node) *Node {}
 
     fn ParamType(Keyword_var: *Token) *Node {}
     fn ParamType(Ellipsis3: *Token) *Node {}
-    fn ParamType(TypeExpr: *Node) *Node {}
+    fn ParamType(Expr: *Node) *Node;
 
     // Control flow prefixes
     fn IfPrefix(Keyword_if: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node {}
@@ -301,10 +427,10 @@ pub extern "LALR" const zig_grammar = struct {
     fn WhilePrefix(Keyword_while: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node, WhileContinueExpr: *Node) *Node {}
 
     // Payloads
-    fn MaybePayload() ?*Node {}
-    fn MaybePayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn MaybePayload() ?*Node;
+    fn MaybePayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node;
 
-    fn MaybePtrPayload() ?*Node {}
+    fn MaybePtrPayload() ?*Node;
     fn MaybePtrPayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
     fn MaybePtrPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
 
@@ -322,125 +448,46 @@ pub extern "LALR" const zig_grammar = struct {
     fn SwitchItems(SwitchItem: *Node) *NodeList {}
     fn SwitchItems(SwitchItems: *NodeList, Comma: *Token, SwitchItem: *Node) *NodeList {}
 
-    fn SwitchItem(Expr: *Node) *Node {}
+    fn SwitchItem(Expr: *Node) *Node;
     fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {}
 
     // Operators
-    fn AssignOp(AsteriskEqual: *Token) *Token {}
-    fn AssignOp(SlashEqual: *Token) *Token {}
-    fn AssignOp(PercentEqual: *Token) *Token {}
-    fn AssignOp(PlusEqual: *Token) *Token {}
-    fn AssignOp(MinusEqual: *Token) *Token {}
-    fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token {}
-    fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token {}
-    fn AssignOp(AmpersandEqual: *Token) *Token {}
-    fn AssignOp(CaretEqual: *Token) *Token {}
-    fn AssignOp(PipeEqual: *Token) *Token {}
-    fn AssignOp(AsteriskPercentEqual: *Token) *Token {}
-    fn AssignOp(PlusPercentEqual: *Token) *Token {}
-    fn AssignOp(MinusPercentEqual: *Token) *Token {}
-    fn AssignOp(Equal: *Token) *Token {}
+    fn AssignOp(AsteriskEqual: *Token) *Token;
+    fn AssignOp(SlashEqual: *Token) *Token;
+    fn AssignOp(PercentEqual: *Token) *Token;
+    fn AssignOp(PlusEqual: *Token) *Token;
+    fn AssignOp(MinusEqual: *Token) *Token;
+    fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token;
+    fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token;
+    fn AssignOp(AmpersandEqual: *Token) *Token;
+    fn AssignOp(CaretEqual: *Token) *Token;
+    fn AssignOp(PipeEqual: *Token) *Token;
+    fn AssignOp(AsteriskPercentEqual: *Token) *Token;
+    fn AssignOp(PlusPercentEqual: *Token) *Token;
+    fn AssignOp(MinusPercentEqual: *Token) *Token;
+    fn AssignOp(Equal: *Token) *Token;
 
-    fn CompareOp(EqualEqual: *Token) *Token {}
-    fn CompareOp(BangEqual: *Token) *Token {}
-    fn CompareOp(AngleBracketLeft: *Token) *Token {}
-    fn CompareOp(AngleBracketRight: *Token) *Token {}
-    fn CompareOp(AngleBracketLeftEqual: *Token) *Token {}
-    fn CompareOp(AngleBracketRightEqual: *Token) *Token {}
+    fn MaybeVolatile() ?*Token;
+    fn MaybeVolatile(Keyword_volatile: *Token) ?*Token;
 
-    fn BitwiseOp(Ampersand: *Token) *Token {}
-    fn BitwiseOp(Caret: *Token) *Token {}
-    fn BitwiseOp(Pipe: *Token) *Token {}
-    // Note: Inconsistent with declared precedence rules
-    fn BitwiseOp(Keyword_orelse: *Token) *Token {}
-    // fn BitwiseOp(Keyword_catch: *Token) *Token {}
-
-    fn BitShiftOp(AngleBracketAngleBracketLeft: *Token) *Token {}
-    fn BitShiftOp(AngleBracketAngleBracketRight: *Token) *Token {}
-
-    fn AdditionOp(Plus: *Token) *Token {}
-    fn AdditionOp(Minus: *Token) *Token {}
-    fn AdditionOp(PlusPlus: *Token) *Token {}
-    fn AdditionOp(PlusPercent: *Token) *Token {}
-    fn AdditionOp(MinusPercent: *Token) *Token {}
-
-    fn MultiplyOp(PipePipe: *Token) *Token {}
-    fn MultiplyOp(Asterisk: *Token) *Token {}
-    fn MultiplyOp(Slash: *Token) *Token {}
-    fn MultiplyOp(Percent: *Token) *Token {}
-    fn MultiplyOp(AsteriskAsterisk: *Token) *Token {}
-    fn MultiplyOp(AsteriskPercent: *Token) *Token {}
-
-    fn PrefixOp(Bang: *Token) *Token {}
-    fn PrefixOp(Minus: *Token) *Token {}
-    fn PrefixOp(Tilde: *Token) *Token {}
-    fn PrefixOp(MinusPercent: *Token) *Token {}
-    fn PrefixOp(Ampersand: *Token) *Token {}
-    fn PrefixOp(Keyword_try: *Token) *Token {}
-    fn PrefixOp(Keyword_await: *Token) *Token {}
-
-    fn PrefixTypeOps(PrefixTypeOp: *Node) *Node {}
-    fn PrefixTypeOps(PrefixTypeOps: *Node, PrefixTypeOp: *Node) *Node {}
-
-    fn PrefixTypeOp(QuestionMark: *Token) *Node {}
-    fn PrefixTypeOp(Keyword_promise: *Token, MinusAngleBracketRight: *Token) *Node {}
-    // Note: ArrayTypeStart inlined and split into Array and Slice to better model modifiers
-    fn PrefixTypeOp(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
-    fn PrefixTypeOp(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
-    fn PrefixTypeOp(PtrTypeStart: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token) *Node {}
-
-    fn SuffixOpsEx(SuffixOp: *Node) *NodeList {}
-    fn SuffixOpsEx(FnCallArguments: *Node) *NodeList {}
-    fn SuffixOpsEx(SuffixOpsEx: *NodeList, SuffixOp: *Node) *NodeList {}
-    fn SuffixOpsEx(SuffixOpsEx: *NodeList, FnCallArguments: *Node) *NodeList {}
-
-    fn SuffixOps(SuffixOp: *Node) *NodeList {}
-    fn SuffixOps(SuffixOps: *NodeList, SuffixOp: *Node) *NodeList {}
-
-    fn SuffixOp(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
-    fn SuffixOp(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
-    fn SuffixOp(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {}
-    fn SuffixOp(Period: *Token, Identifier: *Token) *Node {}
-    fn SuffixOp(Period: *Token, Asterisk: *Token) *Node {}
-    fn SuffixOp(Period: *Token, QuestionMark: *Token) *Node {}
-
-    fn AsyncPrefix(Keyword_async: *Token) *Node {}
-    fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, PrefixExpr: *Node, AngleBracketRight: *Token) *Node {}
-
-    fn FnCallArguments(LParen: *Token, RParen: *Token) *Node {}
-    fn FnCallArguments(LParen: *Token, ExprList: *NodeList, MaybeComma: ?*Token, RParen: *Token) *Node {}
-
-    // Ptr specific
-    // Note: deprecated these and inlined in PrefixTypeOp
-    // fn ArrayTypeStart(LBracket: *Token, RBracket: *Token) *Node {}
-    // fn ArrayTypeStart(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
-
-    fn PtrTypeStart(Asterisk: *Token) *Token {}
-    fn PtrTypeStart(AsteriskAsterisk: *Token) *Token {}
-    fn PtrTypeStart(BracketStarBracket: *Token) *Token {}
-    fn PtrTypeStart(BracketStarCBracket: *Token) *Token {}
-
-    fn MaybeVolatile() ?*Token {}
-    fn MaybeVolatile(Keyword_volatile: *Token) ?*Token {}
-
-    fn MaybeAllowzero() ?*Token {}
-    fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token {}
+    fn MaybeAllowzero() ?*Token;
+    fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token;
 
     // ContainerDecl specific
     fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, RParen: *Token) *Node {}
     fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token, RParen: *Token) *Node {}
-    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
-    fn ContainerDeclType(Keyword_enum: *Token, LParen: *Token, TypeExpr: *Node, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
 
-    fn ContainerDeclOp(Keyword_struct: *Token) *Token {}
-    fn ContainerDeclOp(Keyword_union: *Token) *Token {}
-    fn ContainerDeclOp(Keyword_enum: *Token) *Token {}
+    fn ContainerDeclOp(Keyword_struct: *Token) *Token;
+    fn ContainerDeclOp(Keyword_union: *Token) *Token;
+    fn ContainerDeclOp(Keyword_enum: *Token) *Token;
 
     // Alignment
-    fn MaybeByteAlign() ?*Node {}
+    fn MaybeByteAlign() ?*Node;
     fn MaybeByteAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
-    
-    fn MaybeAlign() *Node {}
+
+    fn MaybeAlign() *Node;
     fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
     fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
     fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
@@ -461,50 +508,81 @@ pub extern "LALR" const zig_grammar = struct {
     fn StringList(StringLiteral: *Token) *NodeList {}
     fn StringList(StringList: *NodeList, Comma: *Token, StringLiteral: *Token) *NodeList {}
 
-    fn MaybeParamDeclList() ?*NodeList {}
+    fn MaybeParamDeclList() ?*NodeList;
     fn MaybeParamDeclList(ParamDeclList: *NodeList, MaybeComma: ?*Token) *NodeList {}
 
     fn ParamDeclList(ParamDecl: *Node) *NodeList {}
     fn ParamDeclList(ParamDeclList: *NodeList, Comma: *Token, ParamDecl: *Node) *NodeList {}
 
-    fn ExprList(Expr: *Node) *Node {}
-    fn ExprList(ExprList: *Node, Comma: *Token, Expr: *Node) *Node {}
+    fn MaybeExprList() ?*NodeList {}
+    fn MaybeExprList(ExprList: *NodeList, MaybeComma: ?*Token) ?*NodeList {
+        result = arg1;
+    }
+
+    fn ExprList(Expr: *Node) *NodeList {}
+    fn ExprList(ExprList: *NodeList, Comma: *Token, Expr: *Node) *Node {}
+
+    fn MaybeInitList() ?*NodeList {}
+    fn MaybeInitList(InitList: *NodeList, MaybeComma: ?*Token) ?*NodeList {
+        result = arg1;
+    }
+
+    fn InitList(Expr: *Node) *NodeList {}
+    fn InitList(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *NodeList {}
+    fn InitList(InitList: *NodeList, Comma: *Token, Expr: *Node) *Node {}
+    fn InitList(InitList: *NodeList, Comma: *Token, Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *Node {}
 
     // Various helpers
-    fn MaybePub() ?*Token {}
-    fn MaybePub(Keyword_pub: *Token) ?*Token {}
+    fn MaybePub() ?*Token;
+    fn MaybePub(Keyword_pub: *Token) ?*Token;
 
-    fn MaybeColonTypeExpr() ?*Node {}
+    fn MaybeColonTypeExpr() ?*Node;
     fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {}
 
-    fn MaybeExpr() ?*Node {}
-    fn MaybeExpr(Expr: *Node) ?*Node {}
+    fn MaybeExpr() ?*Node;
+    fn MaybeExpr(Expr: *Node) ?*Node;
 
-    fn MaybeBang() ?*Token {}
-    fn MaybeBang(Bang: *Token) ?*Token {}
+    fn MaybeNoalias() ?*Token;
+    fn MaybeNoalias(Keyword_noalias: *Token) ?*Token;
 
-    fn MaybeNoaliasComptime() ?*Token {}
-    fn MaybeNoaliasComptime(Keyword_noalias: *Token) ?*Token {}
-    fn MaybeNoaliasComptime(Keyword_comptime: *Token) ?*Token {}
+    fn MaybeInline() ?*Token;
+    fn MaybeInline(Keyword_inline: *Token) ?*Token;
 
-    fn MaybeInline() ?*Token {}
-    fn MaybeInline(Keyword_inline: *Token) ?*Token {}
+    fn MaybeIdentifier() ?*Token;
+    fn MaybeIdentifier(Identifier: *Token) ?*Token;
 
-    fn MaybeIdentifier() ?*Token {}
-    fn MaybeIdentifier(Identifier: *Token) ?*Token {}
+    fn MaybeComma() ?*Token;
+    fn MaybeComma(Comma: *Token) ?*Token;
 
-    fn MaybeComma() ?*Token {}
-    fn MaybeComma(Comma: *Token) ?*Token {}
-
-    fn MaybeConst() ?*Token {}
-    fn MaybeConst(Keyword_const: *Token) ?*Token {}
-
-    fn SemicolonOrBlock(Semicolon: *Token) ?*Node {}
-    fn SemicolonOrBlock(Block: *Node) ?*Node {}
+    fn MaybeConst() ?*Token;
+    fn MaybeConst(Keyword_const: *Token) ?*Token;
 
     fn MultilineStringLiteral(LineString: *Token) *NodeList {}
     fn MultilineStringLiteral(MultilineStringLiteral: *NodeList, LineString: *Token) *NodeList {}
 
     fn MultilineCStringLiteral(LineCString: *Token) *NodeList {}
     fn MultilineCStringLiteral(MultilineCStringLiteral: *NodeList, LineCString: *Token) *NodeList {}
+
+    fn FnProtoType(Keyword_var: *Token) *Node;
+    fn FnProtoType(Bang: Precedence_not(*Token), Keyword_var: *Token) *Node;
+    fn FnProtoType(TypeExpr: *Node) *Node;
+    fn FnProtoType(Bang: Precedence_not(*Token), TypeExpr: *Node) *Node;
+
+    fn TypeExpr(Identifier: *Token) *Node;
+    fn TypeExpr(ContainerDecl: *Node) *Node;
+    fn TypeExpr(TypeExpr: *Node, Period: *Token, TypeExpr: *Node) *Node;
+    fn TypeExpr(TypeExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node;
+    fn TypeExpr(Builtin: *Token, Identifier: *Token, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+    fn TypeExpr(TypeExpr: *Node, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+    fn TypeExpr(QuestionMark: *Token, TypeExpr: *Node) *Node;
+    fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {}
+    // ArrayType
+    fn TypeExpr(LBracket: *Token, Expr: *Node, RBracket: *Token, TypeExpr: *Node) *Node {}
+    // SliceType
+    fn TypeExpr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeByteAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    // PtrType
+    fn TypeExpr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
 };
