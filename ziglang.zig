@@ -235,22 +235,134 @@ pub extern "LALR" const zig_grammar = struct {
 
     // Infix
     fn Expr(Expr: *Node, Keyword_orelse: *Token, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, Expr: *Node) *Node {}
-    fn Expr(Expr: *Node, Keyword_or: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Keyword_and: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, EqualEqual: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, BangEqual: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketLeft: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketRight: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketLeftEqual: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketRightEqual: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Pipe: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Caret: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Ampersand: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketAngleBracketLeft: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, AngleBracketAngleBracketRight: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Plus: *Token, Expr: *Node) *Node;
-    fn Expr(Expr: *Node, Minus: *Token, Expr: *Node) *Node;
+    fn Expr(Expr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = Node.InfixOp.Op{ .Catch = arg3 };
+        node.rhs = arg4;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Keyword_or: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BoolOr;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Keyword_and: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BoolAnd;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, EqualEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .EqualEqual;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, BangEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BangEqual;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketLeft: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .LessThan;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketRight: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .GreaterThan;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketLeftEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .LessOrEqual;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketRightEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .GreaterOrEqual;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Pipe: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BitOr;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Caret: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BitXor;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Ampersand: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BitAnd;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketAngleBracketLeft: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BitShiftLeft;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, AngleBracketAngleBracketRight: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .BitShiftRight;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Plus: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .Add;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn Expr(Expr: *Node, Minus: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .Sub;
+        node.rhs = arg3;
+        result = &node.base;
+    }
     fn Expr(Expr: *Node, PlusPlus: *Token, Expr: *Node) *Node {
         const node = try parser.createNode(Node.InfixOp);
         node.lhs = arg1;
@@ -374,14 +486,39 @@ pub extern "LALR" const zig_grammar = struct {
     fn Expr(Expr: *Node, Bang: *Token, Expr: *Node) *Node {}
 
     // Literals
-    fn Expr(Identifier: *Token) *Node { const node = try parser.createNode(Node.Identifier); node.token = arg1; result = &node.base; }
-    fn Expr(CharLiteral: *Token) *Node { const node = try parser.createNode(Node.CharLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(FloatLiteral: *Token) *Node { const node = try parser.createNode(Node.FloatLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(IntegerLiteral: *Token) *Node { const node = try parser.createNode(Node.IntegerLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(StringLiteral: *Token) *Node { const node = try parser.createNode(Node.StringLiteral); node.token = arg1; result = &node.base; }
+    fn Expr(Identifier: *Token) *Node {
+        const node = try parser.createNode(Node.Identifier);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(CharLiteral: *Token) *Node {
+        const node = try parser.createNode(Node.CharLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(FloatLiteral: *Token) *Node {
+        const node = try parser.createNode(Node.FloatLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(IntegerLiteral: *Token) *Node {
+        const node = try parser.createNode(Node.IntegerLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(StringLiteral: *Token) *Node {
+        const node = try parser.createNode(Node.StringLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
     fn Expr(MultilineStringLiteral: *NodeList) *Node {}
     fn Expr(MultilineCStringLiteral: *NodeList) *Node {}
-    fn Expr(Period: Precedence_enumlit(*Token), Identifier: *Token) *Node { const node = try parser.createNode(Node.EnumLiteral); node.dot = arg1; node.name = arg2; result = &node.base; }
+    fn Expr(Period: Precedence_enumlit(*Token), Identifier: *Token) *Node {
+        const node = try parser.createNode(Node.EnumLiteral);
+        node.dot = arg1;
+        node.name = arg2;
+        result = &node.base;
+    }
 
     // Simple types
     fn Expr(Keyword_error: *Token, Period: *Token, Identifier: *Token) *Node {
@@ -410,11 +547,31 @@ pub extern "LALR" const zig_grammar = struct {
         error_set.rbrace_token = arg5;
         result = &error_set.base;
     }
-    fn Expr(Keyword_false: *Token) *Node { const node = try parser.createNode(Node.BoolLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(Keyword_true: *Token) *Node { const node = try parser.createNode(Node.BoolLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(Keyword_null: *Token) *Node { const node = try parser.createNode(Node.NullLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(Keyword_undefined: *Token) *Node { const node = try parser.createNode(Node.UndefinedLiteral); node.token = arg1; result = &node.base; }
-    fn Expr(Keyword_unreachable: *Token) *Node { const node = try parser.createNode(Node.Unreachable); node.token = arg1; result = &node.base; }
+    fn Expr(Keyword_false: *Token) *Node {
+        const node = try parser.createNode(Node.BoolLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(Keyword_true: *Token) *Node {
+        const node = try parser.createNode(Node.BoolLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(Keyword_null: *Token) *Node {
+        const node = try parser.createNode(Node.NullLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(Keyword_undefined: *Token) *Node {
+        const node = try parser.createNode(Node.UndefinedLiteral);
+        node.token = arg1;
+        result = &node.base;
+    }
+    fn Expr(Keyword_unreachable: *Token) *Node {
+        const node = try parser.createNode(Node.Unreachable);
+        node.token = arg1;
+        result = &node.base;
+    }
 
     // Flow types
     fn Expr(SwitchExpr: Shadow(*Node)) *Node;
@@ -429,27 +586,73 @@ pub extern "LALR" const zig_grammar = struct {
     fn Expr(FnProto: *Node) *Node;
 
     // Suffix expressions
-    fn Expr(Expr: *Node, SuffixExpr: *Node) *Node {}
+    fn Expr(Expr: *Node, SuffixExpr: *Node) *Node {
+        if (arg2.cast(Node.SuffixOp)) |op| {
+            op.lhs = arg1;
+        } else {
+            arg2.unsafe_cast(Node.InfixOp).lhs = arg1;
+        }
+        result = arg2;
+    }
+    fn SuffixExpr(SuffixExpr: *Node, SuffixExpr: *Node) *Node {
+        if (arg2.cast(Node.SuffixOp)) |op| {
+            op.lhs = arg1;
+        } else {
+            arg2.unsafe_cast(Node.InfixOp).lhs = arg1;
+        }
+        result = arg2;
+    }
 
     // a[]
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {}
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, RBracket: *Token, SuffixExpr: *Node) *Node {}
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {}
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token, SuffixExpr: *Node) *Node {}
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {}
-    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token, SuffixExpr: *Node) *Node {}
+    fn SuffixExpr(LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = Node.SuffixOp.Op{ .ArrayAccess = arg2 };
+        node.rtoken = arg3;
+        result = &node.base;
+    }
+    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = Node.SuffixOp.Op{ .Slice = Node.SuffixOp.Op.Slice{ .start = arg2, .end = null } };
+        node.rtoken = arg4;
+        result = &node.base;
+    }
+    fn SuffixExpr(LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = Node.SuffixOp.Op{ .Slice = Node.SuffixOp.Op.Slice{ .start = arg2, .end = arg4 } };
+        node.rtoken = arg5;
+        result = &node.base;
+    }
     // a.b
-    fn SuffixExpr(Period: *Token, Identifier: *Node) *Node {}
-    fn SuffixExpr(Period: *Token, Identifier: *Node, SuffixExpr: *Node) *Node {}
+    fn SuffixExpr(Period: *Token, Identifier: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const infix = try parser.createNode(Node.InfixOp);
+        infix.op_token = arg1;
+        infix.op = .Period;
+        infix.rhs = &name.base;
+        result = &infix.base;
+    }
     // a.*
-    fn SuffixExpr(PeriodAsterisk: *Token) *Node {}
-    fn SuffixExpr(PeriodAsterisk: *Token, SuffixExpr: *Node) *Node {}
+    fn SuffixExpr(PeriodAsterisk: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = .Deref;
+        node.rtoken = arg1;
+        result = &node.base;
+    }
     // a.?
-    fn SuffixExpr(PeriodQuestionMark: *Token) *Node {}
-    fn SuffixExpr(PeriodQuestionMark: *Token, SuffixExpr: *Node) *Node {}
+    fn SuffixExpr(PeriodQuestionMark: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = .UnwrapOptional;
+        node.rtoken = arg1;
+        result = &node.base;
+    }
     // a()
-    fn SuffixExpr(LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
-    fn SuffixExpr(LParen: *Token, MaybeExprList: ?*Node, RParen: *Token, SuffixExpr: *Node) *Node {}
+    fn SuffixExpr(LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.op = Node.SuffixOp.Op{ .Call = Node.SuffixOp.Op.Call{ .async_attr = null, .params = NodeList.init(parser.allocator) } };
+        node.rtoken = arg3;
+        result = &node.base;
+    }
 
     // Containers (struct/enum/union)
     fn Expr(ContainerDecl: *Node) *Node;

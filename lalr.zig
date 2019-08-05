@@ -391,8 +391,8 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.print(".{} ", production.terminal);
                 try out.stream.write("};\n");
                 if(production.body.len > 0 or production.consumes > 1 or std.mem.compare(u8, production.terminal_type.name, production.symbol_types.items[0].name) != .Equal) {
-                    // try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = @ptrToInt(result);\n");
-                    try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = 0x42424242;\n");
+                    try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = @ptrToInt(result);\n");
+                    // try out.stream.write(" " ** 12 ++ "parser.stack.items[parser.stack.len-1].item = 0x42424242;\n");
                 }
             }
             try out.stream.print(" " ** 12 ++ "return TerminalId.{};\n", production.terminal);
