@@ -456,7 +456,7 @@ fn writeGrammar(grammar: Grammar) !void {
                             c += 1;
                     }
                 }
-                if(c > 0 and c < 10)
+                if(c > 0 and c < 16)
                 {
                     i = 0;
                     while(i < grammar.epsilon_index) : (i += 1) {
@@ -497,7 +497,7 @@ fn writeGrammar(grammar: Grammar) !void {
                         }
                     }
                 }
-                if(c > 0 and c < 10)
+                if(c > 0 and c < 16)
                 {
                     i = grammar.epsilon_index;
                     while(i < transition.len) : (i += 1) {

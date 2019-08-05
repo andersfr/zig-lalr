@@ -998,62 +998,52 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                     }
                     else if(transition[key] > 0) {
                         if(!resolveShiftReducePass(grammar, &isocores.items[current_isocore], pair.production_id)) {
-                            // // TODO: this can actually be deduced from the grammar
-                            if(std.mem.compare(u8, grammar.names_index_map.keyOf(production.terminal_id), "IfExpr") == .Equal) {
-                                const Else = key == grammar.names_index_map.indexOf("Keyword_else").?;
-                                warn("\x1b[31mResolved Shift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                if(!Else) {
-                                    transition[key] = -@intCast(i32, pair.production_id);
-                                }
-                            }
-                            else {
-                                if(production.precedence_value != 0 and precedence[key] != 0) {
-                                    // Resolve with precedence
-                                    if(production.precedence_left) {
-                                        if(precedence[key] > 0) {
-                                            // left vs left
-                                            if(production.precedence_value >= precedence[key]) {
-                                                // reduce
-                                                transition[key] = -@intCast(i32, pair.production_id);
-                                            }
-                                        }
-                                        else {
-                                            // left vs right
-                                            if(production.precedence_value >= -precedence[key]) {
-                                                // reduce
-                                                transition[key] = -@intCast(i32, pair.production_id);
-                                            }
+                            if(production.precedence_value != 0 and precedence[key] != 0) {
+                                // Resolve with precedence
+                                if(production.precedence_left) {
+                                    if(precedence[key] > 0) {
+                                        // left vs left
+                                        if(production.precedence_value >= precedence[key]) {
+                                            // reduce
+                                            transition[key] = -@intCast(i32, pair.production_id);
                                         }
                                     }
                                     else {
-                                        if(precedence[key] > 0) {
-                                            // right vs left
-                                            if(production.precedence_value >= precedence[key]) {
-                                                // reduce
-                                                transition[key] = -@intCast(i32, pair.production_id);
-                                            }
-                                        }
-                                        else {
-                                            // right vs right
-                                            if(production.precedence_value > -precedence[key]) {
-                                                // reduce
-                                                transition[key] = -@intCast(i32, pair.production_id);
-                                            }
+                                        // left vs right
+                                        if(production.precedence_value >= -precedence[key]) {
+                                            // reduce
+                                            transition[key] = -@intCast(i32, pair.production_id);
                                         }
                                     }
                                 }
-                                else if(production.precedence_value != 0 or precedence[key] != 0) {
-                                    // shift when precedence is missing
-                                }
                                 else {
-                                    warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
-                                    shift_reduce_conflicts += 1;
-                                    has_conflicts = true;
+                                    if(precedence[key] > 0) {
+                                        // right vs left
+                                        if(production.precedence_value >= precedence[key]) {
+                                            // reduce
+                                            transition[key] = -@intCast(i32, pair.production_id);
+                                        }
+                                    }
+                                    else {
+                                        // right vs right
+                                        if(production.precedence_value > -precedence[key]) {
+                                            // reduce
+                                            transition[key] = -@intCast(i32, pair.production_id);
+                                        }
+                                    }
                                 }
+                            }
+                            else if(production.precedence_value != 0 or precedence[key] != 0) {
+                                // shift when precedence is missing
+                            }
+                            else {
+                                warn("\x1b[31mShift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                shift_reduce_conflicts += 1;
+                                has_conflicts = true;
                             }
                         }
                         else {
-                            warn("Resolved Shift-Reduce conflict\n");
+                            warn("\x1b[31mXXX Resolved Shift-Reduce conflict:\x1b[0m s{} vs r{} on symbol {}\n", transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
                         }
                     }
                     else {

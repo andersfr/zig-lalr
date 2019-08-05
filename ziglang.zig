@@ -265,6 +265,7 @@ pub extern "LALR" const zig_grammar = struct {
     // Prefix
     fn Expr(Bang: Precedence_not(*Token), Expr: *Node) *Node;
     fn Expr(Minus: Precedence_neg(*Token), Expr: *Node) *Node;
+    fn Expr(MinusPercent: Precedence_neg(*Token), Expr: *Node) *Node;
     fn Expr(Tilde: *Token, Expr: *Node) *Node;
     fn Expr(Ampersand: Precedence_ref(*Token), Expr: *Node) *Node;
     fn Expr(Keyword_try: *Token, Expr: *Node) *Node;
@@ -487,10 +488,10 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybeByteAlign() ?*Node;
     fn MaybeByteAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
 
-    fn MaybeAlign() *Node;
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) *Node {}
+    fn MaybeAlign() ?*Node;
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {}
 
     // Lists
     fn IdentifierList(Identifier: *Token) *NodeList {}
