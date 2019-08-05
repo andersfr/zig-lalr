@@ -16,9 +16,10 @@ usingnamespace Transitions;
 pub const Parser = struct {
     state: i16 = 0,
     stack: Stack,
+    allocator: *std.mem.Allocator,
 
     pub fn init(allocator: *std.mem.Allocator) Self {
-        return Self{ .stack = Stack.init(allocator) };
+        return Self{ .stack = Stack.init(allocator), .allocator = allocator };
     }
 
     pub fn deinit(self: *Self) void {
@@ -38,6 +39,12 @@ pub const Parser = struct {
     pub const Self = @This();
 
     pub const Stack = std.ArrayList(StackItem);
+
+    pub fn createNode(self: *Self, comptime T: type) !*T {
+        const node = try self.allocator.create(T);
+        node.base.id = Node.typeToId(T);
+        return node;
+    }
 
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
         const id = @intCast(i16, @enumToInt(token_id));
