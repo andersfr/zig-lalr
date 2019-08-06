@@ -46,6 +46,20 @@ pub const Parser = struct {
         return node;
     }
 
+    pub fn createListWithNode(self: *Self, comptime T: type, node: *Node) !*T {
+        const list = try self.allocator.create(T);
+        list.* = T.init(self.allocator);
+        try list.append(node);
+        return list;
+    }
+
+    pub fn createListWithToken(self: *Self, comptime T: type, token: *Token) !*T {
+        const list = try self.allocator.create(T);
+        list.* = T.init(self.allocator);
+        try list.append(token);
+        return list;
+    }
+
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
         const id = @intCast(i16, @enumToInt(token_id));
 
@@ -165,22 +179,59 @@ pub fn main() !void {
     var parser = Parser.init(allocator);
     var line: usize = 1;
     defer parser.deinit();
+
+    var tokens = std.ArrayList(Token).init(allocator);
+    defer tokens.deinit();
     while (true) {
         var token = lexer.next();
+        try tokens.append(token);
+        if(token.id == .Eof)
+            break;
+    }
+    var i: usize = 0;
+    // Bunch of bullshit to deal with Root DocComment
+    {
+        var b: bool = false;
+        // Consume Root DocComment
+        while(i < tokens.len) : (i += 1) {
+            const id = tokens.items[i].id;
+            if(id == .Newline) {
+                if(i > 0 and b and tokens.items[i-1].id != .DocComment) break;
+                continue;
+            }
+            if(id == .LineComment) continue;
+            if(id != .DocComment) {
+                // Not a Root DocComment
+                b = false;
+                break;
+            }
+
+            b = true;
+        }
+        // Change Identifier
+        if(b) {
+            var j: usize = 0;
+            while(j < i) : (j += 1) {
+                const id = tokens.items[j].id;
+                if(id == .DocComment) tokens.items[j].id = .RootDocComment;
+            }
+        }
+        i = 0;
+    }
+    // Parse normally after Root DocComments
+    while(i < tokens.len) : (i += 1) {
+        const token = &tokens.items[i];
         if(token.id == .Newline) {
             line += 1;
             continue;
         }
         if(token.id == .LineComment) continue;
 
-        if(!try parser.action(token.id, &token)) {
+        if(!try parser.action(token.id, token)) {
             std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
         }
-        if(token.id == .Eof) {
-            warn("\n");
-            break;
-        }
     }
+    warn("\n");
 }
 

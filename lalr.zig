@@ -195,7 +195,6 @@ fn parseGrammar(name: []const u8, tree: *std.zig.ast.Tree, buffer: []const u8, c
             try grammar.append(prod);
         }
     }
-
     try grammar.finalize(precedence_map);
     return grammar;
 }
@@ -361,7 +360,7 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.print(" " ** 12 ++ "// Symbol: {}\n", grammar.names_index_map.keyOf(production.symbol_ids[ti]));
                 // try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
                 try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
-                try out.stream.print(" " ** 12 ++ "const val{} = parser.stack.items[parser.stack.len - {}].value;\n", ti+1, production.symbol_types.len - ti);
+                // try out.stream.print(" " ** 12 ++ "const val{} = parser.stack.items[parser.stack.len - {}].value;\n", ti+1, production.symbol_types.len - ti);
             }
             try out.stream.write("\n");
             if(production.consumes == 1) {

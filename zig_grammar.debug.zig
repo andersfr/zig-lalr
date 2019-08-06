@@ -2,7 +2,7 @@ const Id = @import("zig_grammar.tokens.zig").Id;
 
 pub fn idToString(id: Id) []const u8 {
     switch(id) {
-        .Builtin                            => return "@",
+        .Builtin                            => return "@builtin",
         .Ampersand                          => return "&",
         .AmpersandEqual                     => return "&=",
         .Asterisk                           => return "*",
@@ -119,6 +119,7 @@ pub fn idToString(id: Id) []const u8 {
         .ShebangLine                        => return "#!",
         .LineComment                        => return "//",
         .DocComment                         => return "///",
+        .RootDocComment                     => return "///",
         .LineString                         => return "\\",
         .LineCString                        => return "c\\",
 

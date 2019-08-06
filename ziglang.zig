@@ -107,84 +107,292 @@ pub extern "LALR" const zig_grammar = struct {
         },
     };
 
-    fn Root(MaybeContainerMembers: ?*NodeList) *Node {}
+    fn Root(MaybeRootDocComment: ?*Node.DocComment, MaybeContainerMembers: ?*NodeList) *Node {
+        const node = try parser.createNode(Node.Root);
+        node.doc_comments = arg1;
+        node.decls = if (arg2) |p| p.* else NodeList.init(parser.allocator);
+        result = &node.base;
+    }
 
     // DocComments
-    fn ContainerMemberWithDocComment(DocCommentLines: *Node, ContainerMember: *Node) *Node {}
-    fn DocCommentLines(DocCommentLines: *NodeList, DocComment: *Token) *NodeList {}
-    fn DocCommentLines(DocComment: *Token) *NodeList {}
+    fn MaybeDocComment() ?*Node.DocComment;
+    fn MaybeDocComment(DocCommentLines: *TokenList) ?*Node.DocComment {
+        const node = try parser.createNode(Node.DocComment);
+        node.lines = arg1.*;
+        result = node;
+    }
+    fn DocCommentLines(DocCommentLines: *TokenList, DocComment: *Token) *TokenList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
+    fn DocCommentLines(DocComment: *Token) *TokenList {
+        result = try parser.createListWithToken(TokenList, arg1);
+    }
+    fn MaybeRootDocComment() ?*Node.DocComment;
+    fn MaybeRootDocComment(RootDocCommentLines: *TokenList) ?*Node.DocComment {
+        const node = try parser.createNode(Node.DocComment);
+        node.lines = arg1.*;
+        result = node;
+    }
+    fn RootDocCommentLines(RootDocCommentLines: *TokenList, RootDocComment: *Token) *TokenList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
+    fn RootDocCommentLines(RootDocComment: *Token) *TokenList {
+        result = try parser.createListWithToken(TokenList, arg1);
+    }
 
     // Containers
     fn MaybeContainerMembers() ?*NodeList;
-    fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList {
-        result = arg1;
-    }
+    fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList;
+
     // Note: these exist to allow a trailing container field without comma
-    fn MaybeContainerMembers(MaybePub: ?*Token, ContainerField: *Node) *Node {}
-    fn MaybeContainerMembers(DocCommentLines: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
-    fn MaybeContainerMembers(ContainerMembers: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
-    fn MaybeContainerMembers(ContainerMembers: *NodeList, DocCommentLines: *NodeList, MaybePub: ?*Token, ContainerField: *Node) *Node {}
+    fn MaybeContainerMembers(ContainerField: *Node) ?*NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn MaybeContainerMembers(ContainerMembers: *NodeList, ContainerField: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
 
-    fn ContainerMembers(ContainerMembers: *NodeList, ContainerMember: *Node) *NodeList {}
-    fn ContainerMembers(ContainerMembers: *NodeList, ContainerMemberWithDocComment: *Node) *NodeList {}
-    fn ContainerMembers(ContainerMember: *Node) *NodeList {}
-    fn ContainerMembers(ContainerMemberWithDocComment: *Node) *NodeList {}
+    fn ContainerMembers(ContainerMembers: *NodeList, ContainerMember: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
+    fn ContainerMembers(ContainerMember: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
 
-    fn ContainerMember(TestDecl: *Node) *Node;
-    fn ContainerMember(TopLevelComptime: *Node) *Node;
-    fn ContainerMember(MaybePub: ?*Token, TopLevelDecl: *Node) *Node {}
-    fn ContainerMember(MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {}
+    fn ContainerMember(MaybeDocComment: ?*Node.DocComment, TestDecl: *Node.TestDecl) *Node {
+        result = &arg2.base;
+        arg2.doc_comments = arg1;
+    }
+    fn ContainerMember(MaybeDocComment: ?*Node.DocComment, TopLevelComptime: *Node.Comptime) *Node {
+        result = &arg2.base;
+        arg2.doc_comments = arg1;
+    }
+    fn ContainerMember(MaybeDocComment: ?*Node.DocComment, MaybePub: ?*Token, TopLevelDecl: *Node) *Node {
+        result = arg3;
+        if (arg3.cast(Node.VarDecl)) |node| {
+            node.doc_comments = arg1;
+            node.visib_token = arg2;
+        } else {
+            const node = arg3.unsafe_cast(Node.FnProto);
+            node.doc_comments = arg1;
+            node.visib_token = arg2;
+        }
+    }
+    fn ContainerMember(MaybeDocComment: ?*Node.DocComment, MaybePub: ?*Token, ContainerField: *Node, Comma: *Token) *Node {
+        result = arg3;
+        const node = arg3.unsafe_cast(Node.ContainerField);
+        node.doc_comments = arg1;
+        node.visib_token = arg2;
+    }
 
     // Test
-    fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node {}
+    fn TestDecl(Keyword_test: *Token, StringLiteral: *Token, Block: *Node) *Node.TestDecl {
+        const name = try parser.createNode(Node.StringLiteral);
+        name.token = arg2;
+        const node = try parser.createNode(Node.TestDecl);
+        node.test_token = arg1;
+        node.name = &name.base;
+        node.body_node = arg3;
+        result = node;
+    }
 
     // Comptime
-    fn TopLevelComptime(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
+    fn TopLevelComptime(Keyword_comptime: *Token, BlockExpr: *Node) *Node.Comptime {
+        const node = try parser.createNode(Node.Comptime);
+        node.comptime_token = arg1;
+        node.expr = arg2;
+        result = node;
+    }
 
     // TopLevel declarations
-    fn TopLevelDecl(FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(FnProto: *Node, Block: *Node) *Node {}
-    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node, Block: *Node) *Node {}
-    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node, Block: *Node) *Node {}
-    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node, Block: *Node) *Node {}
-    fn TopLevelDecl(MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
-    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
-    fn TopLevelDecl(Keyword_export: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
-    fn TopLevelDecl(Keyword_extern: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {}
-    fn TopLevelDecl(Keyword_usingnamespace: *Token, Expr: *Node, Semicolon: *Token) *Node {}
-    fn TopLevelDecl(Keyword_use: *Token, Expr: *Node, Semicolon: *Token) *Node {}
+    fn TopLevelDecl(FnProto: *Node.FnProto, Semicolon: *Token) *Node { result = &arg1.base; }
+    fn TopLevelDecl(FnProto: *Node.FnProto, Block: *Node) *Node { arg1.body_node = arg2; result = &arg1.base; }
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node.FnProto, Semicolon: *Token) *Node {
+        result = &arg3.base;
+        const lib_name = try parser.createNode(Node.StringLiteral);
+        lib_name.token = arg2;
+        arg3.extern_export_inline_token = arg1;
+        arg3.lib_name = &lib_name.base;
+    }
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node.FnProto, Block: *Node) *Node {
+        result = &arg3.base;
+        const lib_name = try parser.createNode(Node.StringLiteral);
+        lib_name.token = arg2;
+        arg3.extern_export_inline_token = arg1;
+        arg3.lib_name = &lib_name.base;
+        arg3.body_node = arg4;
+    }
+    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node.FnProto, Semicolon: *Token) *Node {
+        result = &arg2.base;
+        arg2.extern_export_inline_token = arg1;
+    }
+    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node.FnProto, Semicolon: *Token) *Node {
+        result = &arg2.base;
+        arg2.extern_export_inline_token = arg1;
+    }
+    fn TopLevelDecl(Keyword_export: *Token, FnProto: *Node.FnProto, Block: *Node) *Node {
+        result = &arg2.base;
+        arg2.extern_export_inline_token = arg1;
+        arg2.body_node = arg3;
+    }
+    fn TopLevelDecl(Keyword_inline: *Token, FnProto: *Node.FnProto, Block: *Node) *Node {
+        result = &arg2.base;
+        arg2.extern_export_inline_token = arg1;
+        arg2.body_node = arg3;
+    }
+    fn TopLevelDecl(MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {
+        result = arg2;
+        const node = arg2.unsafe_cast(Node.VarDecl);
+        node.thread_local_token = arg1;
+    }
+    fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {
+        result = arg4;
+        const lib_name = try parser.createNode(Node.StringLiteral);
+        lib_name.token = arg2;
+        const node = arg4.unsafe_cast(Node.VarDecl);
+        node.extern_export_token = arg1;
+        node.lib_name = &lib_name.base;
+        node.thread_local_token = arg3;
+    }
+    fn TopLevelDecl(Keyword_export: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {
+        result = arg3;
+        const node = arg3.unsafe_cast(Node.VarDecl);
+        node.extern_export_token = arg1;
+        node.thread_local_token = arg2;
+    }
+    fn TopLevelDecl(Keyword_extern: *Token, MaybeThreadlocal: ?*Token, VarDecl: *Node) *Node {
+        result = arg3;
+        const node = arg3.unsafe_cast(Node.VarDecl);
+        node.extern_export_token = arg1;
+        node.thread_local_token = arg2;
+    }
+    fn TopLevelDecl(Keyword_usingnamespace: *Token, Expr: *Node, Semicolon: *Token) *Node {
+        const node = try parser.createNode(Node.Use);
+        node.use_token = arg1;
+        node.expr = arg2;
+        node.semicolon_token = arg3;
+        result = &node.base;
+    }
+    fn TopLevelDecl(Keyword_use: *Token, Expr: *Node, Semicolon: *Token) *Node {
+        const node = try parser.createNode(Node.Use);
+        node.use_token = arg1;
+        node.expr = arg2;
+        node.semicolon_token = arg3;
+        result = &node.base;
+    }
 
     fn MaybeThreadlocal() ?*Token;
     fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token;
 
     // Functions
-    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node {}
-    fn FnProto(Keyword_async: *Token, AngleBracketLeft: *Token, Expr: *Node, AngleBracketRight: *Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*Node, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node {}
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node.FnProto {
+        const node = try parser.createNode(Node.FnProto);
+        node.cc_token = arg1;
+        node.fn_token = arg2;
+        node.name_token = arg3;
+        node.params = if(arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.align_expr = arg7;
+        node.section_expr = arg8;
+        node.return_type = Node.FnProto.ReturnType{ .Explicit = arg9 };
+        result = node;
+    }
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), FnProtoType: *Node) *Node.FnProto {
+        const node = try parser.createNode(Node.FnProto);
+        node.cc_token = arg1;
+        node.fn_token = arg2;
+        node.name_token = arg3;
+        node.params = if(arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.align_expr = arg7;
+        node.section_expr = arg8;
+        node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = arg10 };
+        result = node;
+    }
 
     // Variables
-    fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
-    fn VarDecl(Keyword_var: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {}
+    fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {
+        const node = try parser.createNode(Node.VarDecl);
+        node.mut_token = arg1;
+        node.name_token = arg2;
+        node.type_node = arg3;
+        node.align_node = arg4;
+        node.section_node = arg5;
+        node.init_node = arg6;
+        node.semicolon_token = arg7;
+        result = &node.base;
+    }
+    fn VarDecl(Keyword_var: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {
+        const node = try parser.createNode(Node.VarDecl);
+        node.mut_token = arg1;
+        node.name_token = arg2;
+        node.type_node = arg3;
+        node.align_node = arg4;
+        node.section_node = arg5;
+        node.init_node = arg6;
+        node.semicolon_token = arg7;
+        result = &node.base;
+    }
 
     // Container field
-    fn ContainerField(Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeEqualExpr: ?*Node) *Node {}
+    fn ContainerField(Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeEqualExpr: ?*Node) *Node {
+        const node = try parser.createNode(Node.ContainerField);
+        node.name_token = arg1;
+        node.type_expr = arg2;
+        node.value_expr = arg3;
+        result = &node.base;
+    }
 
     // Statements
     fn MaybeStatements() ?*NodeList;
     fn MaybeStatements(Statements: *NodeList) ?*NodeList;
 
-    fn Statements(Statement: *Node) *NodeList {}
-    fn Statements(Statements: *NodeList, Statement: *Node) *NodeList {}
+    fn Statements(Statement: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn Statements(Statements: *NodeList, Statement: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
 
-    fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {}
+    fn Statement(Keyword_comptime: *Token, VarDecl: *Node) *Node {
+        const node = try parser.createNode(Node.Comptime);
+        node.comptime_token = arg1;
+        node.expr = arg2;
+        result = &node.base;
+    }
     fn Statement(VarDecl: *Node) *Node;
-    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {}
-    fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {}
-    fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {}
-    fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {}
-    fn Statement(Keyword_errdefer: *Token, BlockExprStatement: *Node) *Node {}
+    fn Statement(Keyword_comptime: *Token, BlockExpr: *Node) *Node {
+        const node = try parser.createNode(Node.Comptime);
+        node.comptime_token = arg1;
+        node.expr = arg2;
+        result = &node.base;
+    }
+    fn Statement(Keyword_suspend: *Token, Semicolon: *Token) *Node {
+        const node = try parser.createNode(Node.Suspend);
+        node.suspend_token = arg1;
+        result = &node.base;
+    }
+    fn Statement(Keyword_suspend: *Token, BlockExprStatement: *Node) *Node {
+        const node = try parser.createNode(Node.Suspend);
+        node.suspend_token = arg1;
+        node.body = arg2;
+        result = &node.base;
+    }
+    fn Statement(Keyword_defer: *Token, BlockExprStatement: *Node) *Node {
+        const node = try parser.createNode(Node.Defer);
+        node.defer_token = arg1;
+        node.expr = arg2;
+        result = &node.base;
+    }
+    fn Statement(Keyword_errdefer: *Token, BlockExprStatement: *Node) *Node {
+        const node = try parser.createNode(Node.Defer);
+        node.defer_token = arg1;
+        node.expr = arg2;
+        result = &node.base;
+    }
     fn Statement(IfStatement: *Node) *Node;
     fn Statement(LabeledStatement: *Node) *Node;
     fn Statement(SwitchExpr: *Node) *Node;
@@ -192,11 +400,31 @@ pub extern "LALR" const zig_grammar = struct {
         result = arg1;
     }
 
-    fn IfStatement(IfPrefix: *Node, BlockExpr: *Node) *Node {}
-    fn IfStatement(IfPrefix: *Node, BlockExpr: *Node, ElseStatement: *Node) *Node {}
-    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, Semicolon: *Token) *Node {}
-    fn IfStatement(IfPrefix: *Node, AssignExpr: *Node, ElseStatement: *Node) *Node {}
-    fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node {}
+    fn IfStatement(IfPrefix: *Node.If, BlockExpr: *Node) *Node {
+        result = &arg1.base;
+        arg1.body = arg2;
+    }
+    fn IfStatement(IfPrefix: *Node.If, BlockExpr: *Node, ElseStatement: *Node.Else) *Node {
+        result = &arg1.base;
+        arg1.body = arg2;
+        arg1.@"else" = arg3;
+    }
+    fn IfStatement(IfPrefix: *Node.If, AssignExpr: *Node, Semicolon: *Token) *Node {
+        result = &arg1.base;
+        arg1.body = arg2;
+    }
+    fn IfStatement(IfPrefix: *Node.If, AssignExpr: *Node, ElseStatement: *Node.Else) *Node {
+        result = &arg1.base;
+        arg1.body = arg2;
+        arg1.@"else" = arg3;
+    }
+    fn ElseStatement(Keyword_else: *Token, MaybePayload: ?*Node, Statement: *Node) *Node.Else {
+        const node = try parser.createNode(Node.Else);
+        node.else_token = arg1;
+        node.payload = arg2;
+        node.body = arg3;
+        result = node;
+    }
 
     fn LabeledStatement(LoopStatement: *Node) *Node;
     fn LabeledStatement(BlockLabel: *Token, LoopStatement: *Node) *Node {}
@@ -222,7 +450,118 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Expression level
-    fn AssignExpr(Expr: *Node, AssignOp: *Token, Expr: *Node) *Node {}
+    fn AssignExpr(Expr: *Node, AsteriskEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignTimes;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, SlashEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignDiv;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, PercentEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignMod;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, PlusEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignPlus;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, MinusEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignMinus;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, AngleBracketAngleBracketLeftEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignBitShiftLeft;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, AngleBracketAngleBracketRightEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignBitShiftRight;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, AmpersandEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignBitAnd;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, CaretEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignBitXor;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, PipeEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignBitOr;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, AsteriskPercentEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignTimesWrap;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, PlusPercentEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignPlusWrap;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, MinusPercentEqual: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .AssignMinusWrap;
+        node.rhs = arg3;
+        result = &node.base;
+    }
+    fn AssignExpr(Expr: *Node, Equal: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .Assign;
+        node.rhs = arg3;
+        result = &node.base;
+    }
     fn AssignExpr(Expr: *Node) *Node;
 
     fn MaybeEqualExpr() ?*Node;
@@ -231,10 +570,23 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Grouped
-    fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.GroupedExpression);
+        node.lparen = arg1;
+        node.expr = arg2;
+        node.rparen = arg3;
+        result = &node.base;
+    }
 
     // Infix
-    fn Expr(Expr: *Node, Keyword_orelse: *Token, Expr: *Node) *Node {}
+    fn Expr(Expr: *Node, Keyword_orelse: *Token, Expr: *Node) *Node {
+        const node = try parser.createNode(Node.InfixOp);
+        node.lhs = arg1;
+        node.op_token = arg2;
+        node.op = .UnwrapOptional;
+        node.rhs = arg3;
+        result = &node.base;
+    }
     fn Expr(Expr: *Node, Keyword_catch: *Token, MaybePayload: ?*Node, Expr: *Node) *Node {
         const node = try parser.createNode(Node.InfixOp);
         node.lhs = arg1;
@@ -575,15 +927,32 @@ pub extern "LALR" const zig_grammar = struct {
 
     // Flow types
     fn Expr(SwitchExpr: Shadow(*Node)) *Node;
+
     // IfExpr
-    fn Expr(IfPrefix: *Node, Expr: *Node) *Node {}
-    fn Expr(IfPrefix: *Node, Expr: *Node, Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {}
+    fn Expr(IfPrefix: *Node.If, Expr: *Node) *Node {
+        result = &arg1.base;
+        arg1.body = arg2;
+    }
+    fn Expr(IfPrefix: *Node.If, Expr: *Node, Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {
+        result = &arg1.base;
+        const node = try parser.createNode(Node.Else);
+        node.else_token = arg3;
+        node.payload = arg4;
+        node.body = arg5;
+        arg1.@"else" = node;
+    }
 
     // Builtin calls
-    fn Expr(Builtin: *Token, Identifier: *Token, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+    fn Expr(Builtin: *Token, LParen: *Token, MaybeExprList: ?*NodeList, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.BuiltinCall);
+        node.builtin_token = arg1;
+        node.params = if (arg3) |p| p.* else NodeList.init(parser.allocator);
+        node.rparen_token = arg4;
+        result = &node.base;
+    }
 
     // FunctionType
-    fn Expr(FnProto: *Node) *Node;
+    fn Expr(FnProto: *Node.FnProto) *Node { result = &arg1.base; }
 
     // Suffix expressions
     fn Expr(Expr: *Node, SuffixExpr: *Node) *Node {
@@ -647,9 +1016,9 @@ pub extern "LALR" const zig_grammar = struct {
         result = &node.base;
     }
     // a()
-    fn SuffixExpr(LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {
+    fn SuffixExpr(LParen: *Token, MaybeExprList: ?*NodeList, RParen: *Token) *Node {
         const node = try parser.createNode(Node.SuffixOp);
-        node.op = Node.SuffixOp.Op{ .Call = Node.SuffixOp.Op.Call{ .async_attr = null, .params = NodeList.init(parser.allocator) } };
+        node.op = Node.SuffixOp.Op{ .Call = Node.SuffixOp.Op.Call{ .async_attr = null, .params = if (arg2) |p| p.* else NodeList.init(parser.allocator) } };
         node.rtoken = arg3;
         result = &node.base;
     }
@@ -710,7 +1079,13 @@ pub extern "LALR" const zig_grammar = struct {
     fn ParamType(Expr: *Node) *Node;
 
     // Control flow prefixes
-    fn IfPrefix(Keyword_if: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node {}
+    fn IfPrefix(Keyword_if: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node.If {
+        const node = try parser.createNode(Node.If);
+        node.if_token = arg1;
+        node.condition = arg3;
+        node.payload = arg5;
+        result = node;
+    }
 
     fn ForPrefix(Keyword_for: *Token, LParen: *Token, Expr: *Node, RParen: *Token, PtrIndexPayload: *Node) *Node {}
     fn WhilePrefix(Keyword_while: *Token, LParen: *Token, Expr: *Node, RParen: *Token, MaybePtrPayload: ?*Node) *Node {}
@@ -740,22 +1115,6 @@ pub extern "LALR" const zig_grammar = struct {
 
     fn SwitchItem(Expr: *Node) *Node;
     fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {}
-
-    // Operators
-    fn AssignOp(AsteriskEqual: *Token) *Token;
-    fn AssignOp(SlashEqual: *Token) *Token;
-    fn AssignOp(PercentEqual: *Token) *Token;
-    fn AssignOp(PlusEqual: *Token) *Token;
-    fn AssignOp(MinusEqual: *Token) *Token;
-    fn AssignOp(AngleBracketAngleBracketLeftEqual: *Token) *Token;
-    fn AssignOp(AngleBracketAngleBracketRightEqual: *Token) *Token;
-    fn AssignOp(AmpersandEqual: *Token) *Token;
-    fn AssignOp(CaretEqual: *Token) *Token;
-    fn AssignOp(PipeEqual: *Token) *Token;
-    fn AssignOp(AsteriskPercentEqual: *Token) *Token;
-    fn AssignOp(PlusPercentEqual: *Token) *Token;
-    fn AssignOp(MinusPercentEqual: *Token) *Token;
-    fn AssignOp(Equal: *Token) *Token;
 
     fn MaybeVolatile() ?*Token;
     fn MaybeVolatile(Keyword_volatile: *Token) ?*Token;
@@ -809,18 +1168,41 @@ pub extern "LALR" const zig_grammar = struct {
         result = arg1;
     }
 
-    fn ExprList(Expr: *Node) *NodeList {}
-    fn ExprList(ExprList: *NodeList, Comma: *Token, Expr: *Node) *Node {}
+    fn ExprList(Expr: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn ExprList(ExprList: *NodeList, Comma: *Token, Expr: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg3);
+    }
 
     fn MaybeInitList() ?*NodeList {}
     fn MaybeInitList(InitList: *NodeList, MaybeComma: ?*Token) ?*NodeList {
         result = arg1;
     }
 
-    fn InitList(Expr: *Node) *NodeList {}
-    fn InitList(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *NodeList {}
-    fn InitList(InitList: *NodeList, Comma: *Token, Expr: *Node) *Node {}
-    fn InitList(InitList: *NodeList, Comma: *Token, Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *Node {}
+    fn InitList(Expr: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn InitList(Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *NodeList {
+        const node = try parser.createNode(Node.FieldInitializer);
+        node.period_token = arg1;
+        node.name_token = arg2;
+        node.expr = arg4;
+        result = try parser.createListWithNode(NodeList, &node.base);
+    }
+    fn InitList(InitList: *NodeList, Comma: *Token, Expr: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg3);
+    }
+    fn InitList(InitList: *NodeList, Comma: *Token, Period: *Token, Identifier: *Token, Equal: *Token, Expr: *Node) *NodeList {
+        result = arg1;
+        const node = try parser.createNode(Node.FieldInitializer);
+        node.period_token = arg3;
+        node.name_token = arg4;
+        node.expr = arg6;
+        try arg1.append(&node.base);
+    }
 
     // Various helpers
     fn MaybePub() ?*Token;
@@ -854,15 +1236,13 @@ pub extern "LALR" const zig_grammar = struct {
     fn MultilineCStringLiteral(MultilineCStringLiteral: *NodeList, LineCString: *Token) *NodeList {}
 
     fn FnProtoType(Keyword_var: *Token) *Node;
-    fn FnProtoType(Bang: Precedence_not(*Token), Keyword_var: *Token) *Node;
     fn FnProtoType(TypeExpr: *Node) *Node;
-    fn FnProtoType(Bang: Precedence_not(*Token), TypeExpr: *Node) *Node;
 
     fn TypeExpr(Identifier: *Token) *Node;
     fn TypeExpr(ContainerDecl: *Node) *Node;
     fn TypeExpr(TypeExpr: *Node, SuffixExpr: *Node) *Node;
     fn TypeExpr(TypeExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node;
-    fn TypeExpr(Builtin: *Token, Identifier: *Token, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
+    fn TypeExpr(Builtin: *Token, LParen: *Token, MaybeExprList: ?*Node, RParen: *Token) *Node {}
     fn TypeExpr(QuestionMark: *Token, TypeExpr: *Node) *Node;
     fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {}
     // ArrayType

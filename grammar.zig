@@ -1075,6 +1075,8 @@ fn isocorePass(grammar: *Grammar, terminal_nullability: []YesNoMaybe, follow_set
                                 }
                                 else {
                                     warn("\x1b[31mReduce-Reduce conflict:\x1b[0m r{} vs r{} on symbol {}\n", -transition[key], pair.production_id, grammar.names_index_map.keyOf(key));
+                                    // Default to rule with lowest number
+                                    if(tkey > pair.production_id) transition[key] = -@intCast(i32, pair.production_id);
                                     reduce_reduce_conflicts += 1;
                                     has_conflicts = true;
                                 }

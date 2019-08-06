@@ -114,9 +114,9 @@
 // %token Keyword_volatile                   %dfa volatile
 // %token Keyword_while                      %dfa while
 
-// %missing Builtin
 // %missing LineComment
 // %missing DocComment
+// %missing RootDocComment
 // %missing MultilineStringLiteral
 // %missing CharLiteral
 // %missing StringLiteral
@@ -127,6 +127,8 @@
 // %token FloatLiteral                       %dfa 0x([0-9A-Fa-f]+)\.?[pP][-+]?[0-9A-Fa-f]+
 // %token FloatLiteral                       %dfa [0-9]+\.?[pP][-+]?[0-9]+
 // %token Identifier                         %dfa [A-Za-z_]([A-Za-z0-9_]*)
+// %token Identifier                         %dfa @"[A-Za-z_]([A-Za-z0-9_]*)"
+// %token Builtin                            %dfa @[A-Za-z_]([A-Za-z0-9_]*)
 
 // Space
 // %dfa ( )+
@@ -142,36 +144,14 @@
 
     if (self.peek == '/') {
         _ = self.getc();
-        if (self.peek != '/')
+        if (self.peek != '/') {
             comment_id = Id.DocComment;
+        }
     }
 
     while (true) {
         switch (self.peek) {
             '\n', -1 => return comment_id,
-            else => {},
-        }
-        _ = self.getc();
-    }
-}
-// %end
-
-// Escaped name identifier / builtin
-// %dfa @
-{
-    switch (self.peek) {
-        '\n', -1 => return Id.Invalid,
-        'A'...'Z','a'...'z' => return Id.Builtin,
-        else => {}
-    }
-    _ = self.getc();
-    while (true) {
-        switch (self.peek) {
-            '\n', -1 => return Id.Identifier,
-            '"' => {
-                _ = self.getc();
-                return Id.Identifier;
-            },
             else => {},
         }
         _ = self.getc();

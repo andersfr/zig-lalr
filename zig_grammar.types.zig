@@ -5,6 +5,7 @@ const Token = @import("zig_grammar.tokens.zig").Token;
 pub const TokenIndex = *Token;
 
 pub const NodeList = std.ArrayList(*Node);
+pub const TokenList = std.ArrayList(*Token);
 
 pub const Node = struct {
     id: Id,
@@ -245,7 +246,7 @@ pub const Node = struct {
         visib_token: ?TokenIndex,
         thread_local_token: ?TokenIndex,
         name_token: TokenIndex,
-        eq_token: TokenIndex,
+        // eq_token: TokenIndex,
         mut_token: TokenIndex,
         comptime_token: ?TokenIndex,
         extern_export_token: ?TokenIndex,
@@ -1103,7 +1104,7 @@ pub const Node = struct {
             AssignPlus,
             AssignPlusWrap,
             AssignTimes,
-            AssignTimesWarp,
+            AssignTimesWrap,
             BangEqual,
             BitAnd,
             BitOr,
@@ -1871,7 +1872,7 @@ pub const Node = struct {
         base: Node,
         lines: LineList,
 
-        pub const LineList = NodeList;
+        pub const LineList = TokenList;
 
         pub fn iterate(self: *DocComment, index: usize) ?*Node {
             return null;
