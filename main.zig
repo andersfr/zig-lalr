@@ -46,6 +46,10 @@ pub const Parser = struct {
         return node;
     }
 
+    pub fn createTemporary(self: *Self, comptime T: type) !*T {
+        return try self.allocator.create(T);
+    }
+
     pub fn createListWithNode(self: *Self, comptime T: type, node: *Node) !*T {
         const list = try self.allocator.create(T);
         list.* = T.init(self.allocator);
