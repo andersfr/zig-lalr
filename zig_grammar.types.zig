@@ -226,17 +226,17 @@ pub const Node = struct {
 
         pub fn iterate(self: *Root, index: usize) ?*Node {
             if (index < self.decls.len) {
-                return self.decls.at(index).*;
+                return self.decls.at(index);
             }
             return null;
         }
 
         pub fn firstToken(self: *const Root) TokenIndex {
-            return if (self.decls.len == 0) self.eof_token else (self.decls.at(0).*).firstToken();
+            return if (self.decls.len == 0) self.eof_token else (self.decls.at(0)).firstToken();
         }
 
         pub fn lastToken(self: *const Root) TokenIndex {
-            return if (self.decls.len == 0) self.eof_token else (self.decls.at(self.decls.len - 1).*).lastToken();
+            return if (self.decls.len == 0) self.eof_token else (self.decls.at(self.decls.len - 1)).lastToken();
         }
     };
 
@@ -335,7 +335,7 @@ pub const Node = struct {
         pub fn iterate(self: *ErrorSetDecl, index: usize) ?*Node {
             var i = index;
 
-            if (i < self.decls.len) return self.decls.at(i).*;
+            if (i < self.decls.len) return self.decls.at(i);
             i -= self.decls.len;
 
             return null;
@@ -378,7 +378,7 @@ pub const Node = struct {
                 InitArg.None, InitArg.Enum => {},
             }
 
-            if (i < self.fields_and_decls.len) return self.fields_and_decls.at(i).*;
+            if (i < self.fields_and_decls.len) return self.fields_and_decls.at(i);
             i -= self.fields_and_decls.len;
 
             return null;
@@ -541,7 +541,7 @@ pub const Node = struct {
                 i -= 1;
             }
 
-            if (i < self.params.len) return self.params.at(self.params.len - i - 1).*;
+            if (i < self.params.len) return self.params.at(self.params.len - i - 1);
             i -= self.params.len;
 
             if (self.align_expr) |align_expr| {
@@ -667,7 +667,7 @@ pub const Node = struct {
         pub fn iterate(self: *Block, index: usize) ?*Node {
             var i = index;
 
-            if (i < self.statements.len) return self.statements.at(i).*;
+            if (i < self.statements.len) return self.statements.at(i);
             i -= self.statements.len;
 
             return null;
@@ -859,7 +859,7 @@ pub const Node = struct {
             if (i < 1) return self.expr;
             i -= 1;
 
-            if (i < self.cases.len) return self.cases.at(i).*;
+            if (i < self.cases.len) return self.cases.at(i);
             i -= self.cases.len;
 
             return null;
@@ -886,7 +886,7 @@ pub const Node = struct {
         pub fn iterate(self: *SwitchCase, index: usize) ?*Node {
             var i = index;
 
-            if (i < self.items.len) return self.items.at(i).*;
+            if (i < self.items.len) return self.items.at(i);
             i -= self.items.len;
 
             if (self.payload) |payload| {
@@ -901,7 +901,7 @@ pub const Node = struct {
         }
 
         pub fn firstToken(self: *const SwitchCase) TokenIndex {
-            return (self.items.at(0).*).firstToken();
+            return (self.items.at(0)).firstToken();
         }
 
         pub fn lastToken(self: *const SwitchCase) TokenIndex {
@@ -1163,7 +1163,7 @@ pub const Node = struct {
                 Op.AssignPlus,
                 Op.AssignPlusWrap,
                 Op.AssignTimes,
-                Op.AssignTimesWarp,
+                Op.AssignTimesWrap,
                 Op.BangEqual,
                 Op.BitAnd,
                 Op.BitOr,
@@ -1359,7 +1359,7 @@ pub const Node = struct {
 
             switch (self.op) {
                 .Call => |*call_info| {
-                    if (i < call_info.params.len) return call_info.params.at(i).*;
+                    if (i < call_info.params.len) return call_info.params.at(i);
                     i -= call_info.params.len;
                 },
                 .ArrayAccess => |index_expr| {
@@ -1376,11 +1376,11 @@ pub const Node = struct {
                     }
                 },
                 .ArrayInitializer => |*exprs| {
-                    if (i < exprs.len) return exprs.at(i).*;
+                    if (i < exprs.len) return exprs.at(i);
                     i -= exprs.len;
                 },
                 .StructInitializer => |*fields| {
-                    if (i < fields.len) return fields.at(i).*;
+                    if (i < fields.len) return fields.at(i);
                     i -= fields.len;
                 },
                 .UnwrapOptional,
@@ -1586,7 +1586,7 @@ pub const Node = struct {
         pub fn iterate(self: *BuiltinCall, index: usize) ?*Node {
             var i = index;
 
-            if (i < self.params.len) return self.params.at(i).*;
+            if (i < self.params.len) return self.params.at(i);
             i -= self.params.len;
 
             return null;
@@ -1629,11 +1629,11 @@ pub const Node = struct {
         }
 
         pub fn firstToken(self: *const MultilineStringLiteral) TokenIndex {
-            return self.lines.at(0).*;
+            return self.lines.at(0);
         }
 
         pub fn lastToken(self: *const MultilineStringLiteral) TokenIndex {
-            return self.lines.at(self.lines.len - 1).*;
+            return self.lines.at(self.lines.len - 1);
         }
     };
 
@@ -1799,10 +1799,10 @@ pub const Node = struct {
         pub fn iterate(self: *Asm, index: usize) ?*Node {
             var i = index;
 
-            if (i < self.outputs.len) return &self.outputs.at(index).*.base;
+            if (i < self.outputs.len) return self.outputs.at(index);
             i -= self.outputs.len;
 
-            if (i < self.inputs.len) return &self.inputs.at(index).*.base;
+            if (i < self.inputs.len) return self.inputs.at(index);
             i -= self.inputs.len;
 
             return null;
@@ -1879,11 +1879,11 @@ pub const Node = struct {
         }
 
         pub fn firstToken(self: *const DocComment) TokenIndex {
-            return self.lines.at(0).*;
+            return self.lines.at(0);
         }
 
         pub fn lastToken(self: *const DocComment) TokenIndex {
-            return self.lines.at(self.lines.len - 1).*;
+            return self.lines.at(self.lines.len - 1);
         }
     };
 

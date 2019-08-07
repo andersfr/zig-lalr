@@ -358,7 +358,6 @@ fn writeGrammar(grammar: Grammar) !void {
                 const symbol_type = production.symbol_types.items[ti];
                 if(symbol_type.name[0] == '$') continue;
                 try out.stream.print(" " ** 12 ++ "// Symbol: {}\n", grammar.names_index_map.keyOf(production.symbol_ids[ti]));
-                // try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
                 try out.stream.print(" " ** 12 ++ "const arg{} = @intToPtr(?*{}, parser.stack.items[parser.stack.len - {}].item){};\n", ti+1, symbol_type.name, production.symbol_types.len - ti, if(symbol_type.optional) "" else ".?");
                 // try out.stream.print(" " ** 12 ++ "const val{} = parser.stack.items[parser.stack.len - {}].value;\n", ti+1, production.symbol_types.len - ti);
             }

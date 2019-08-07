@@ -42,12 +42,15 @@ pub const Parser = struct {
 
     pub fn createNode(self: *Self, comptime T: type) !*T {
         const node = try self.allocator.create(T);
+        @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
         node.base.id = Node.typeToId(T);
         return node;
     }
 
     pub fn createTemporary(self: *Self, comptime T: type) !*T {
-        return try self.allocator.create(T);
+        const node = try self.allocator.create(T);
+        @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
+        return node;
     }
 
     pub fn createListWithNode(self: *Self, comptime T: type, node: *Node) !*T {
@@ -212,5 +215,9 @@ pub fn main() !void {
         }
     }
     warn("\n");
+    const Root = @intToPtr(?*Node.Root, parser.stack.at(0).item) orelse return;
+    Root.eof_token = &tokens.items[tokens.len-1];
+    warn("\n");
+    Root.base.dump(0);
 }
 

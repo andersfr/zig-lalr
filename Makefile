@@ -8,7 +8,7 @@ all: main
 run: main
 	zig run main.zig
 
-main: lalr zig_grammar.actions.zig main.zig zig_lexer.zig lexer.tab.zig
+main: lalr zig_grammar.actions.zig zig_grammar.types.zig main.zig zig_lexer.zig lexer.tab.zig
 	time zig build-exe --single-threaded ${MODE} main.zig
 
 lalr: lalr.zig grammar.zig
