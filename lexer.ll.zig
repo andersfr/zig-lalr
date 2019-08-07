@@ -116,7 +116,6 @@
 
 // %missing LineComment
 // %missing DocComment
-// %missing RootDocComment
 // %missing MultilineStringLiteral
 // %missing CharLiteral
 // %missing StringLiteral

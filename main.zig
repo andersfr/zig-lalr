@@ -189,36 +189,11 @@ pub fn main() !void {
             break;
     }
     var i: usize = 0;
-    // Bunch of bullshit to deal with Root DocComment
-    {
-        var b: bool = false;
-        // Consume Root DocComment
-        while(i < tokens.len) : (i += 1) {
-            const id = tokens.items[i].id;
-            if(id == .Newline) {
-                if(i > 0 and b and tokens.items[i-1].id != .DocComment) break;
-                continue;
-            }
-            if(id == .LineComment) continue;
-            if(id != .DocComment) {
-                // Not a Root DocComment
-                b = false;
-                break;
-            }
-
-            b = true;
-        }
-        // Change Identifier
-        if(b) {
-            var j: usize = 0;
-            while(j < i) : (j += 1) {
-                const id = tokens.items[j].id;
-                if(id == .DocComment) tokens.items[j].id = .RootDocComment;
-            }
-        }
-        i = 0;
+    // If file starts with a DocComment this is considered a RootComment
+    while(i < tokens.len) : (i += 1) {
+        tokens.items[i].id = if(tokens.items[i].id == .DocComment) .RootDocComment else break;
     }
-    // Parse normally after Root DocComments
+    i = 0;
     while(i < tokens.len) : (i += 1) {
         const token = &tokens.items[i];
         if(token.id == .Newline) {
