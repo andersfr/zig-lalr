@@ -176,8 +176,13 @@ pub extern "LALR" const zig_grammar = struct {
         if (arg3.cast(Node.VarDecl)) |node| {
             node.doc_comments = arg1;
             node.visib_token = arg2;
-        } else {
-            const node = arg3.unsafe_cast(Node.FnProto);
+        }
+        else if (arg3.cast(Node.FnProto)) |node| {
+            node.doc_comments = arg1;
+            node.visib_token = arg2;
+        }
+        else {
+            const node = arg3.unsafe_cast(Node.Use);
             node.doc_comments = arg1;
             node.visib_token = arg2;
         }
@@ -1142,7 +1147,7 @@ pub extern "LALR" const zig_grammar = struct {
         error_set.rbrace_token = arg3;
         result = &error_set.base;
     }
-    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), IdentifierList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
+    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), ErrorTagList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
         const error_set = try parser.createNode(Node.ErrorSetDecl);
         error_set.error_token = arg1;
         error_set.decls = arg3.*;
@@ -1569,15 +1574,17 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Lists
-    fn IdentifierList(Identifier: *Token) *NodeList {
-        const node = try parser.createNode(Node.Identifier);
-        node.token = arg1;
+    fn ErrorTagList(MaybeDocComment: ?*Node.DocComment, Identifier: *Token) *NodeList {
+        const node = try parser.createNode(Node.ErrorTag);
+        node.doc_comments = arg1;
+        node.name_token = arg2;
         result = try parser.createListWithNode(NodeList, &node.base);
     }
-    fn IdentifierList(IdentifierList: *NodeList, Comma: *Token, Identifier: *Token) *NodeList {
+    fn ErrorTagList(ErrorTagList: *NodeList, Comma: *Token, MaybeDocComment: ?*Node.DocComment, Identifier: *Token) *NodeList {
         result = arg1;
-        const node = try parser.createNode(Node.Identifier);
-        node.token = arg3;
+        const node = try parser.createNode(Node.ErrorTag);
+        node.doc_comments = arg3;
+        node.name_token = arg4;
         try arg1.append(&node.base);
     }
 
