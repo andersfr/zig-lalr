@@ -1622,7 +1622,7 @@ pub const Node = struct {
         base: Node,
         lines: LineList,
 
-        pub const LineList = NodeList;
+        pub const LineList = TokenList;
 
         pub fn iterate(self: *MultilineStringLiteral, index: usize) ?*Node {
             return null;

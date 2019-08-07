@@ -1032,12 +1032,22 @@ pub extern "LALR" const zig_grammar = struct {
         result = &node.base;
     }
     // SliceType
-    fn Expr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    fn Expr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {
+        // unreachable;
+    }
     // PtrType
-    fn Expr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
-    fn Expr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
-    fn Expr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
-    fn Expr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {}
+    fn Expr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {
+        // unreachable;
+    }
+    fn Expr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {
+        // unreachable;
+    }
+    fn Expr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {
+        // unreachable;
+    }
+    fn Expr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, Expr: *Node) *Node {
+        // unreachable;
+    }
 
     // Block
     fn Expr(BlockExpr: Shadow(*Node)) *Node;
@@ -1095,12 +1105,12 @@ pub extern "LALR" const zig_grammar = struct {
         node.token = arg1;
         result = &node.base;
     }
-    fn Expr(MultilineStringLiteral: *NodeList) *Node {
+    fn Expr(MultilineStringLiteral: *TokenList) *Node {
         const node = try parser.createNode(Node.MultilineStringLiteral);
         node.lines = arg1.*;
         result = &node.base;
     }
-    fn Expr(MultilineCStringLiteral: *NodeList) *Node {
+    fn Expr(MultilineCStringLiteral: *TokenList) *Node {
         const node = try parser.createNode(Node.MultilineStringLiteral);
         node.lines = arg1.*;
         result = &node.base;
@@ -1293,21 +1303,43 @@ pub extern "LALR" const zig_grammar = struct {
         // unreachable;
     }
 
-    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) *Node {}
-    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList, AsmInput: *Node) *Node {}
-    fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {}
+    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) *Node {
+        // unreachable;
+    }
+    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList, AsmInput: *Node) *Node {
+        // unreachable;
+    }
+    fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {
+        // unreachable;
+    }
 
-    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {}
-    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {
+        // unreachable;
+    }
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, Expr: *Node, RParen: *Token) *Node {
+        // unreachable;
+    }
 
-    fn AsmInput(Colon: *Token, AsmInputList: *NodeList) *Node {}
-    fn AsmInput(Colon: *Token, AsmInputList: *NodeList, AsmClobber: *Node) *Node {}
-    fn AsmInput(Colon: *Token, AsmClobber: *Node) *Node {}
+    fn AsmInput(Colon: *Token, AsmInputList: *NodeList) *Node {
+        // unreachable;
+    }
+    fn AsmInput(Colon: *Token, AsmInputList: *NodeList, AsmClobber: *Node) *Node {
+        // unreachable;
+    }
+    fn AsmInput(Colon: *Token, AsmClobber: *Node) *Node {
+        // unreachable;
+    }
 
-    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        // unreachable;
+    }
 
-    fn AsmClobber(Colon: *Token) *Node {}
-    fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {}
+    fn AsmClobber(Colon: *Token) *Node {
+        // unreachable;
+    }
+    fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {
+        // unreachable;
+    }
 
     // Helper grammar
     fn BreakLabel(Colon: *Token, Identifier: *Token) *Node {
@@ -1426,24 +1458,74 @@ pub extern "LALR" const zig_grammar = struct {
         result = &node.base;
     }
 
-    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
-    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
-    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
-    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) ?*Node {}
+    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Pipe: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const node = try parser.createNode(Node.PointerIndexPayload);
+        node.lpipe = arg1;
+        node.value_symbol = &name.base;
+        node.rpipe = arg3;
+        result = &node.base;
+    }
+    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Pipe: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg3;
+        const node = try parser.createNode(Node.PointerIndexPayload);
+        node.lpipe = arg1;
+        node.ptr_token = arg2;
+        node.value_symbol = &name.base;
+        node.rpipe = arg4;
+        result = &node.base;
+    }
+    fn PtrIndexPayload(Pipe: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const index = try parser.createNode(Node.Identifier);
+        index.token = arg4;
+        const node = try parser.createNode(Node.PointerIndexPayload);
+        node.lpipe = arg1;
+        node.value_symbol = &name.base;
+        node.index_symbol = &index.base;
+        node.rpipe = arg5;
+        result = &node.base;
+    }
+    fn PtrIndexPayload(Pipe: *Token, Asterisk: *Token, Identifier: *Token, Comma: *Token, Identifier: *Token, Pipe: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg3;
+        const index = try parser.createNode(Node.Identifier);
+        index.token = arg5;
+        const node = try parser.createNode(Node.PointerIndexPayload);
+        node.lpipe = arg1;
+        node.ptr_token = arg2;
+        node.value_symbol = &name.base;
+        node.index_symbol = &index.base;
+        node.rpipe = arg6;
+        result = &node.base;
+    }
 
     // Switch specific
     fn SwitchProng(SwitchCase: *Node, EqualAngleBracketRight: *Token, MaybePtrPayload: ?*Node, AssignExpr: *Node) *Node {
         // unreachable;
     }
 
-    fn SwitchCase(Keyword_else: *Token) *Node {}
-    fn SwitchCase(SwitchItems: *NodeList, MaybeComma: ?*Token) *Node {}
+    fn SwitchCase(Keyword_else: *Token) *Node {
+        // unreachable;
+    }
+    fn SwitchCase(SwitchItems: *NodeList, MaybeComma: ?*Token) *Node {
+        // unreachable;
+    }
 
-    fn SwitchItems(SwitchItem: *Node) *NodeList {}
-    fn SwitchItems(SwitchItems: *NodeList, Comma: *Token, SwitchItem: *Node) *NodeList {}
+    fn SwitchItems(SwitchItem: *Node) *NodeList {
+        // unreachable;
+    }
+    fn SwitchItems(SwitchItems: *NodeList, Comma: *Token, SwitchItem: *Node) *NodeList {
+        // unreachable;
+    }
 
     fn SwitchItem(Expr: *Node) *Node;
-    fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {}
+    fn SwitchItem(Expr: *Node, Ellipsis3: *Token, Expr: *Node) *Node {
+        // unreachable;
+    }
 
     fn MaybeVolatile() ?*Token;
     fn MaybeVolatile(Keyword_volatile: *Token) ?*Token;
@@ -1452,10 +1534,18 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybeAllowzero(Keyword_allowzero: *Token) ?*Token;
 
     // ContainerDecl specific
-    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, RParen: *Token) *Node {}
-    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token, RParen: *Token) *Node {}
-    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
-    fn ContainerDeclType(Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {}
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, RParen: *Token) *Node {
+        // unreachable;
+    }
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token, RParen: *Token) *Node {
+        // unreachable;
+    }
+    fn ContainerDeclType(Keyword_union: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        // unreachable;
+    }
+    fn ContainerDeclType(Keyword_enum: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        // unreachable;
+    }
 
     fn ContainerDeclOp(Keyword_struct: *Token) *Token;
     fn ContainerDeclOp(Keyword_union: *Token) *Token;
@@ -1468,9 +1558,15 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     fn MaybeAlign() ?*Node;
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {}
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {}
-    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {}
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, RParen: *Token) ?*Node {
+        // unreachable;
+    }
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Expr: *Node, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {
+        // unreachable;
+    }
+    fn MaybeAlign(Keyword_align: *Token, LParen: *Token, Identifier: *Token, Colon: *Token, IntegerLiteral: *Token, Colon: *Token, IntegerLiteral: *Token, RParen: *Token) ?*Node {
+        // unreachable;
+    }
 
     // Lists
     fn IdentifierList(Identifier: *Token) *NodeList {
@@ -1493,11 +1589,21 @@ pub extern "LALR" const zig_grammar = struct {
         try arg1.append(arg3);
     }
 
-    fn AsmOutputList(AsmOutputItem: *Node) *NodeList {}
-    fn AsmOutputList(AsmOutputList: *NodeList, Comma: *Token, AsmOutputItem: *Node) *NodeList {}
+    fn AsmOutputList(AsmOutputItem: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn AsmOutputList(AsmOutputList: *NodeList, Comma: *Token, AsmOutputItem: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg3);
+    }
 
-    fn AsmInputList(AsmInputItem: *Node) *NodeList {}
-    fn AsmInputList(AsmInputList: *NodeList, Comma: *Token, AsmInputItem: *Node) *NodeList {}
+    fn AsmInputList(AsmInputItem: *Node) *NodeList {
+        result = try parser.createListWithNode(NodeList, arg1);
+    }
+    fn AsmInputList(AsmInputList: *NodeList, Comma: *Token, AsmInputItem: *Node) *NodeList {
+        result = arg1;
+        try arg1.append(arg3);
+    }
 
     fn StringList(StringLiteral: *Token) *NodeList {
         const node = try parser.createNode(Node.StringLiteral);
@@ -1516,8 +1622,15 @@ pub extern "LALR" const zig_grammar = struct {
         result = arg1;
     }
 
-    fn ParamDeclList(ParamDecl: *Node) *NodeList {}
-    fn ParamDeclList(ParamDeclList: *NodeList, Comma: *Token, ParamDecl: *Node) *NodeList {}
+    fn ParamDeclList(MaybeDocComment: ?*Node.DocComment, ParamDecl: *Node.ParamDecl) *NodeList {
+        arg2.doc_comments = arg1;
+        result = try parser.createListWithNode(NodeList, &arg2.base);
+    }
+    fn ParamDeclList(ParamDeclList: *NodeList, Comma: *Token, MaybeDocComment: ?*Node.DocComment, ParamDecl: *Node.ParamDecl) *NodeList {
+        result = arg1;
+        arg4.doc_comments = arg3;
+        try arg1.append(&arg4.base);
+    }
 
     fn MaybeExprList() ?*NodeList {}
     fn MaybeExprList(ExprList: *NodeList, MaybeComma: ?*Token) ?*NodeList {
@@ -1560,7 +1673,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybePub(Keyword_pub: *Token) ?*Token;
 
     fn MaybeColonTypeExpr() ?*Node;
-    fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {}
+    fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node { result = arg2; }
 
     fn MaybeExpr() ?*Node;
     fn MaybeExpr(Expr: *Node) ?*Node;
@@ -1580,11 +1693,21 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybeConst() ?*Token;
     fn MaybeConst(Keyword_const: *Token) ?*Token;
 
-    fn MultilineStringLiteral(LineString: *Token) *NodeList {}
-    fn MultilineStringLiteral(MultilineStringLiteral: *NodeList, LineString: *Token) *NodeList {}
+    fn MultilineStringLiteral(LineString: *Token) *TokenList {
+        result = try parser.createListWithToken(TokenList, arg1);
+    }
+    fn MultilineStringLiteral(MultilineStringLiteral: *TokenList, LineString: *Token) *TokenList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
 
-    fn MultilineCStringLiteral(LineCString: *Token) *NodeList {}
-    fn MultilineCStringLiteral(MultilineCStringLiteral: *NodeList, LineCString: *Token) *NodeList {}
+    fn MultilineCStringLiteral(LineCString: *Token) *TokenList {
+        result = try parser.createListWithToken(TokenList, arg1);
+    }
+    fn MultilineCStringLiteral(MultilineCStringLiteral: *TokenList, LineCString: *Token) *TokenList {
+        result = arg1;
+        try arg1.append(arg2);
+    }
 
     fn FnProtoType(Keyword_var: *Token) *Node {
         const node = try parser.createNode(Node.VarType);
@@ -1641,10 +1764,20 @@ pub extern "LALR" const zig_grammar = struct {
         result = &node.base;
     }
     // SliceType
-    fn TypeExpr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
+        // unreachable;
+    }
     // PtrType
-    fn TypeExpr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
-    fn TypeExpr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {}
+    fn TypeExpr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
+        // unreachable;
+    }
+    fn TypeExpr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
+        // unreachable;
+    }
+    fn TypeExpr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
+        // unreachable;
+    }
+    fn TypeExpr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
+        // unreachable;
+    }
 };
