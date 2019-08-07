@@ -1366,49 +1366,119 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Assembly
-    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, RParen: *Token) *Node {
-        // unreachable;
+    fn String(StringLiteral: *Token) *Node {
+        const node = try parser.createNode(Node.StringLiteral);
+        node.token = arg1;
+        result = &node.base;
     }
-    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, StringLiteral: *Token, AsmOutput: *Node, RParen: *Token) *Node {
-        // unreachable;
+    fn String(MultilineStringLiteral: *TokenList) *Node {
+        const node = try parser.createNode(Node.MultilineStringLiteral);
+        node.lines = arg1.*;
+        result = &node.base;
+    }
+    fn String(MultilineCStringLiteral: *TokenList) *Node {
+        const node = try parser.createNode(Node.MultilineStringLiteral);
+        node.lines = arg1.*;
+        result = &node.base;
+    }
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, String: *Node, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.Asm);
+        node.asm_token = arg1;
+        node.volatile_token = arg2;
+        node.template = arg4;
+        node.outputs = NodeList.init(parser.allocator);
+        node.inputs = NodeList.init(parser.allocator);
+        node.clobbers = NodeList.init(parser.allocator);
+        node.rparen = arg5;
+        result = &node.base;
+    }
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, String: *Node, AsmOutput: ?*NodeList, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.Asm);
+        node.asm_token = arg1;
+        node.volatile_token = arg2;
+        node.template = arg4;
+        node.outputs = if(arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.inputs = NodeList.init(parser.allocator);
+        node.clobbers = NodeList.init(parser.allocator);
+        node.rparen = arg6;
+        result = &node.base;
+    }
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, String: *Node, AsmOutput: ?*NodeList, AsmInput: ?*NodeList, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.Asm);
+        node.asm_token = arg1;
+        node.volatile_token = arg2;
+        node.template = arg4;
+        node.outputs = if(arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.inputs = if(arg6) |p| p.* else NodeList.init(parser.allocator);
+        node.clobbers = NodeList.init(parser.allocator);
+        node.rparen = arg7;
+        result = &node.base;
+    }
+    fn AsmExpr(Keyword_asm: *Token, MaybeVolatile: ?*Token, LParen: *Token, String: *Node, AsmOutput: ?*NodeList, AsmInput: ?*NodeList, AsmClobber: ?*NodeList, RParen: *Token) *Node {
+        const node = try parser.createNode(Node.Asm);
+        node.asm_token = arg1;
+        node.volatile_token = arg2;
+        node.template = arg4;
+        node.outputs = if(arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.inputs = if(arg6) |p| p.* else NodeList.init(parser.allocator);
+        node.clobbers = if(arg7) |p| p.* else NodeList.init(parser.allocator);
+        node.rparen = arg8;
+        result = &node.base;
     }
 
-    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) *Node {
-        // unreachable;
+    fn AsmOutput(Colon: *Token) ?*NodeList { result = null; }
+    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList) ?*NodeList {
+        result = arg2;
     }
-    fn AsmOutput(Colon: *Token, AsmOutputList: *NodeList, AsmInput: *Node) *Node {
-        // unreachable;
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, String: *Node, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const variable = try parser.createNode(Node.Identifier);
+        variable.token = arg6;
+        const node = try parser.createNode(Node.AsmOutput);
+        node.lbracket = arg1;
+        node.symbolic_name = &name.base;
+        node.constraint = arg4;
+        node.kind = Node.AsmOutput.Kind{ .Variable = variable };
+        node.rparen = arg7;
+        result = &node.base;
     }
-    fn AsmOutput(Colon: *Token, AsmInput: *Node) *Node {
-        // unreachable;
-    }
-
-    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Identifier: *Token, RParen: *Token) *Node {
-        // unreachable;
-    }
-    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, MinusAngleBracketRight: *Token, Expr: *Node, RParen: *Token) *Node {
-        // unreachable;
-    }
-
-    fn AsmInput(Colon: *Token, AsmInputList: *NodeList) *Node {
-        // unreachable;
-    }
-    fn AsmInput(Colon: *Token, AsmInputList: *NodeList, AsmClobber: *Node) *Node {
-        // unreachable;
-    }
-    fn AsmInput(Colon: *Token, AsmClobber: *Node) *Node {
-        // unreachable;
-    }
-
-    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, StringLiteral: *Token, LParen: *Token, Expr: *Node, RParen: *Token) *Node {
-        // unreachable;
+    fn AsmOutputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, String: *Node, LParen: *Token, MinusAngleBracketRight: *Token, Expr: *Node, RParen: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const node = try parser.createNode(Node.AsmOutput);
+        node.lbracket = arg1;
+        node.symbolic_name = &name.base;
+        node.constraint = arg4;
+        node.kind = Node.AsmOutput.Kind{ .Return = arg7 };
+        node.rparen = arg8;
+        result = &node.base;
     }
 
-    fn AsmClobber(Colon: *Token) *Node {
-        // unreachable;
+    fn AsmInput(Colon: *Token) ?*NodeList {
+        result = null;
     }
-    fn AsmClobber(Colon: *Token, StringList: *NodeList) *Node {
-        // unreachable;
+    fn AsmInput(Colon: *Token, AsmInputList: *NodeList) ?*NodeList {
+        result = arg2;
+    }
+
+    fn AsmInputItem(LBracket: *Token, Identifier: *Token, RBracket: *Token, String: *Node, LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        const name = try parser.createNode(Node.Identifier);
+        name.token = arg2;
+        const node = try parser.createNode(Node.AsmInput);
+        node.lbracket = arg1;
+        node.symbolic_name = &name.base;
+        node.constraint = arg4;
+        node.expr = arg6;
+        node.rparen = arg7;
+        result = &node.base;
+    }
+
+    fn AsmClobber(Colon: *Token) ?*NodeList {
+        result = null;
+    }
+    fn AsmClobber(Colon: *Token, StringList: *NodeList) ?*NodeList {
+        result = arg2;
     }
 
     // Helper grammar
