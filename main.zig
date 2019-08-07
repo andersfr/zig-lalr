@@ -42,6 +42,7 @@ pub const Parser = struct {
 
     pub fn createNode(self: *Self, comptime T: type) !*T {
         const node = try self.allocator.create(T);
+        // Allocator memsets to 0xaa but we rely on structs being zero-initialized
         @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
         node.base.id = Node.typeToId(T);
         return node;
@@ -49,6 +50,7 @@ pub const Parser = struct {
 
     pub fn createTemporary(self: *Self, comptime T: type) !*T {
         const node = try self.allocator.create(T);
+        // Allocator memsets to 0xaa but we rely on structs being zero-initialized
         @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
         return node;
     }
