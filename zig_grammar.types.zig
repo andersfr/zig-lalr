@@ -74,6 +74,9 @@ pub const Node = struct {
         AsyncAttribute,
         ParamDecl,
         FieldInitializer,
+
+        // Recovery
+        Recovery,
     };
 
     pub fn cast(base: *Node, comptime T: type) ?*T {
@@ -1920,5 +1923,23 @@ pub const Node = struct {
             return self.body_node.lastToken();
         }
     };
+
+    pub const Recovery = struct {
+        base: Node,
+        token: *Token,
+
+        pub fn iterate(self: *Recovery, index: usize) ?*Node {
+            return null;
+        }
+
+        pub fn firstToken(self: *const Recovery) TokenIndex {
+            return self.token;
+        }
+
+        pub fn lastToken(self: *const Recovery) TokenIndex {
+            return self.token;
+        }
+    };
+
 };
 

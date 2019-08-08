@@ -73,7 +73,7 @@ pub const Parser = struct {
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
         const id = @intCast(i16, @enumToInt(token_id));
 
-        outer: while (true) {
+        action_loop: while (true) {
             var state: usize = @bitCast(u16, self.state);
 
             // Shifts
@@ -136,11 +136,11 @@ pub const Parser = struct {
                                 else => {}
                             }
                         }
-                        continue :outer;
+                        continue :action_loop;
                     }
                 }
             }
-            break;
+            break :action_loop;
         }
         if(self.stack.len == 1 and token_id == .Eof) {
             switch(self.stack.at(0).value) {
@@ -150,6 +150,21 @@ pub const Parser = struct {
                 },
                 else => {}
             }
+        }
+
+        return false;
+    }
+
+    fn recovery(self: *Self, token_id: Id, token: *Token) bool {
+        const top = self.stack.len-1;
+        const items = self.stack.items;
+
+        switch(items[top].value) {
+            .Terminal => |id| {
+                // Missing function return type
+                if(id == .MaybeLinkSection) return true;
+            },
+            else => {}
         }
 
         return false;
@@ -183,12 +198,13 @@ pub fn main() !void {
         if(token.id == .Eof)
             break;
     }
-    var i: usize = 1;
+    const shebang = if(tokens.items[1].id == .ShebangLine) @intCast(usize, 1) else @intCast(usize, 0);
+    var i: usize = shebang + 1;
     // If file starts with a DocComment this is considered a RootComment
     while(i < tokens.len) : (i += 1) {
         tokens.items[i].id = if(tokens.items[i].id == .DocComment) .RootDocComment else break;
     }
-    i = 0;
+    i = shebang;
     var line: usize = 0;
     var last_newline = &tokens.items[0];
     while(i < tokens.len) : (i += 1) {
@@ -204,6 +220,11 @@ pub fn main() !void {
         if(token.id == .LineComment) continue;
 
         if(!try parser.action(token.id, token)) {
+            if(parser.recovery(token.id, token)) {
+                _ = try parser.action(.Recovery, token);
+                i -= 1;
+                continue;
+            }
             std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
         }

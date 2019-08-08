@@ -701,6 +701,13 @@ pub extern "LALR" const zig_grammar = struct {
         }
     }
 
+    // Recovery
+    fn Expr(Recovery: *Token) *Node {
+        const node = try parser.createNode(Node.Recovery);
+        node.token = arg1;
+        result = &node.base;
+    }
+
     // Grouped
     fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {
         if(arg2.id != .GroupedExpression) {

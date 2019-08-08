@@ -207,8 +207,7 @@
 // StringLiteral
 // %dfa "
 {
-    // TODO: utf-8 sequences
-    outer: while (true) {
+    while (true) {
         switch (self.peek) {
             '\n', -1 => {
                 // TODO: error
@@ -216,34 +215,14 @@
             },
             '\\' => {
                 _ = self.getc();
-                _ = self.getc();
             },
             '"' => {
                 _ = self.getc();
                 return Id.StringLiteral;
             },
-            else => {
-                // Ascii
-                if(self.peek & 0xc0 != 0xc0) {
-                    _ = self.getc();
-                    continue :outer;
-                }
-                // UTF-8
-                var chars = @clz(i8, ~@truncate(i8, self.peek))-1;
-                while(chars > 0) : (chars -= 1) {
-                    _ = self.getc();
-                    if(self.peek == '\n' or self.peek == -1) {
-                        // TODO: error
-                        return Id.StringLiteral;
-                    }
-                    if(self.peek & 0xc0 != 0x80) {
-                        // TODO: utf8 error
-                        continue :outer;
-                    }
-                }
-                continue :outer;
-            },
+            else => {},
         }
+        _ = self.getc();
     }
 }
 // %end

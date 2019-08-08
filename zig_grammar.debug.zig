@@ -128,6 +128,8 @@ pub fn idToString(id: Id) []const u8 {
         .StringLiteral                      => return "StringLiteral",
         .IntegerLiteral                     => return "IntegerLiteral",
         .FloatLiteral                       => return "FloatLiteral",
+
+        .Recovery                           => return "$error",
         //else => unreachable,
     }
 }

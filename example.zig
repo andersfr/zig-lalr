@@ -12,6 +12,9 @@ pub async(*std.mem.allocator) fn nextCodepointSlice(it: *Utf8Iterator) ?[]const 
 
     async gfd.fds.*;
 }
+fn notype(arg1: type) {
+    const bla;
+}
 // const std = @import("std");
 // const testing = std.testing;
 // const fmt = std.fmt;
