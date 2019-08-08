@@ -452,6 +452,7 @@ fn writeGrammar(grammar: Grammar) !void {
                 try out.stream.write("},\n");
             }
             var it = grammar.transitions.iterator();
+            var c: usize = 1;
             outer: while(it.next()) |transition| {
                 var i: usize = 0;
                 blk: {
@@ -463,6 +464,7 @@ fn writeGrammar(grammar: Grammar) !void {
                 }
                 try out.stream.write("    [_]i16{");
                 i = 0;
+                c += 1;
                 while(i < grammar.epsilon_index) : (i += 1) {
                     if(transition[i] != 0) {
                         try out.stream.print("{}, ", transition[i]);
@@ -475,10 +477,10 @@ fn writeGrammar(grammar: Grammar) !void {
             }
             try out.stream.write("};\n\n");
 
-            try out.stream.print("pub const goto_index = [{}]u16 {}\n", grammar.transitions.len, "{");
+            try out.stream.print("pub const goto_index = [{}]{} {}\n", grammar.transitions.len, if(c < 256) "u8" else "u16", "{");
             it = grammar.transitions.iterator();
-            var c: usize = 1;
             try out.stream.write("    ");
+            c = 1;
             while(it.next()) |transition| {
                 var i: usize = 0;
                 var empty: bool = true;

@@ -312,7 +312,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybeThreadlocal(Keyword_threadlocal: *Token) ?*Token;
 
     // Functions
-    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node.FnProto {
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Expr: *Node) *Node.FnProto {
         const node = try parser.createNode(Node.FnProto);
         node.cc_token = arg1;
         node.fn_token = arg2;
@@ -322,8 +322,9 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .Explicit = arg9 };
         result = node;
+        parser.expect_return_type = false;
     }
-    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), FnProtoType: *Node) *Node.FnProto {
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), Expr: *Node) *Node.FnProto {
         const node = try parser.createNode(Node.FnProto);
         node.cc_token = arg1;
         node.fn_token = arg2;
@@ -333,6 +334,35 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = arg10 };
         result = node;
+        parser.expect_return_type = false;
+    }
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Keyword_var: *Token) *Node.FnProto {
+        const vnode = try parser.createNode(Node.VarType);
+        vnode.token = arg9;
+        const node = try parser.createNode(Node.FnProto);
+        node.cc_token = arg1;
+        node.fn_token = arg2;
+        node.name_token = arg3;
+        node.params = if (arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.align_expr = arg7;
+        node.section_expr = arg8;
+        node.return_type = Node.FnProto.ReturnType{ .Explicit = &vnode.base };
+        result = node;
+        parser.expect_return_type = false;
+    }
+    fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), Keyword_var: *Token) *Node.FnProto {
+        const vnode = try parser.createNode(Node.VarType);
+        vnode.token = arg10;
+        const node = try parser.createNode(Node.FnProto);
+        node.cc_token = arg1;
+        node.fn_token = arg2;
+        node.name_token = arg3;
+        node.params = if (arg5) |p| p.* else NodeList.init(parser.allocator);
+        node.align_expr = arg7;
+        node.section_expr = arg8;
+        node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = &vnode.base };
+        result = node;
+        parser.expect_return_type = false;
     }
 
     fn AsyncPrefix(Keyword_async: *Token) *Node.AsyncAttribute {
@@ -340,13 +370,13 @@ pub extern "LALR" const zig_grammar = struct {
         node.async_token = arg1;
         result = node;
     }
-    fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, TypeExpr: *Node, AngleBracketRight: Precedence_none(*Token)) *Node.AsyncAttribute {
-        const node = try parser.createNode(Node.AsyncAttribute);
-        node.async_token = arg1;
-        node.allocator_type = arg3;
-        node.rangle_bracket = arg4;
-        result = node;
-    }
+    // fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, Expr: *Node, AngleBracketRight: Precedence_none(*Token)) *Node.AsyncAttribute {
+    //     const node = try parser.createNode(Node.AsyncAttribute);
+    //     node.async_token = arg1;
+    //     node.allocator_type = arg3;
+    //     node.rangle_bracket = arg4;
+    //     result = node;
+    // }
 
     // Variables
     fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {
@@ -1856,7 +1886,7 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybePub(Keyword_pub: *Token) ?*Token;
 
     fn MaybeColonTypeExpr() ?*Node;
-    fn MaybeColonTypeExpr(Colon: *Token, TypeExpr: *Node) ?*Node {
+    fn MaybeColonTypeExpr(Colon: *Token, Expr: *Node) ?*Node {
         result = arg2;
     }
 
@@ -1892,190 +1922,5 @@ pub extern "LALR" const zig_grammar = struct {
     fn MultilineCStringLiteral(MultilineCStringLiteral: *TokenList, LineCString: *Token) *TokenList {
         result = arg1;
         try arg1.append(arg2);
-    }
-
-    fn FnProtoType(Keyword_var: *Token) *Node {
-        const node = try parser.createNode(Node.VarType);
-        node.token = arg1;
-        result = &node.base;
-    }
-    fn FnProtoType(TypeExpr: *Node) *Node;
-
-    fn TypeExpr(Identifier: *Token) *Node {
-        const node = try parser.createNode(Node.Identifier);
-        node.token = arg1;
-        result = &node.base;
-    }
-    fn TypeExpr(ContainerDecl: *Node) *Node;
-    fn TypeExpr(FnProto: *Node) *Node;
-
-    fn TypeExpr(AsyncPrefix: *Node.AsyncAttribute, TypeExpr: *Node) *Node {
-        result = arg2;
-        if(arg2.cast(Node.SuffixOp)) |suffix| {
-            switch(suffix.op) {
-                .Call => |call| {
-                    suffix.op.Call.async_attr = arg1;
-                },
-                else => {
-                    // TODO: Error not a call
-                }
-            }
-        }
-        else {
-            // TODO: Error not a call
-        }
-    }
-
-    fn TypeExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {
-        if(arg2.id != .GroupedExpression) {
-            const node = try parser.createNode(Node.GroupedExpression);
-            node.lparen = arg1;
-            node.expr = arg2;
-            node.rparen = arg3;
-            result = &node.base;
-        }
-        else result = arg2;
-    }
-
-    // a[]
-    fn TypeExpr(TypeExpr: *Node, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = Node.SuffixOp.Op{ .ArrayAccess = arg3 };
-        node.rtoken = arg4;
-        result = &node.base;
-    }
-    fn TypeExpr(TypeExpr: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, RBracket: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = Node.SuffixOp.Op{ .Slice = Node.SuffixOp.Op.Slice{ .start = arg3, .end = null } };
-        node.rtoken = arg5;
-        result = &node.base;
-    }
-    fn TypeExpr(TypeExpr: *Node, LBracket: *Token, Expr: *Node, Ellipsis2: *Token, Expr: *Node, RBracket: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = Node.SuffixOp.Op{ .Slice = Node.SuffixOp.Op.Slice{ .start = arg3, .end = arg5 } };
-        node.rtoken = arg6;
-        result = &node.base;
-    }
-    // a.b
-    fn TypeExpr(TypeExpr: *Node, Period: *Token, Identifier: *Token) *Node {
-        const name = try parser.createNode(Node.Identifier);
-        name.token = arg3;
-        const infix = try parser.createNode(Node.InfixOp);
-        infix.lhs = arg1;
-        infix.op_token = arg2;
-        infix.op = .Period;
-        infix.rhs = &name.base;
-        result = &infix.base;
-    }
-    // a.*
-    fn TypeExpr(TypeExpr: *Node, PeriodAsterisk: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = .Deref;
-        node.rtoken = arg2;
-        result = &node.base;
-    }
-    // a.?
-    fn TypeExpr(TypeExpr: *Node, PeriodQuestionMark: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = .UnwrapOptional;
-        node.rtoken = arg2;
-        result = &node.base;
-    }
-    // a()
-    fn TypeExpr(TypeExpr: *Node, LParen: *Token, MaybeExprList: ?*NodeList, RParen: *Token) *Node {
-        const node = try parser.createNode(Node.SuffixOp);
-        node.lhs = arg1;
-        node.op = Node.SuffixOp.Op{ .Call = Node.SuffixOp.Op.Call{ .async_attr = null, .params = if (arg3) |p| p.* else NodeList.init(parser.allocator) } };
-        node.rtoken = arg4;
-        result = &node.base;
-    }
-    
-    fn TypeExpr(TypeExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.InfixOp);
-        node.lhs = arg1;
-        node.op_token = arg2;
-        node.op = .ErrorUnion;
-        node.rhs = arg3;
-        result = &node.base;
-    }
-    fn TypeExpr(Builtin: *Token, LParen: *Token, MaybeExprList: ?*NodeList, RParen: *Token) *Node {
-        const node = try parser.createNode(Node.BuiltinCall);
-        node.builtin_token = arg1;
-        node.params = if (arg3) |p| p.* else NodeList.init(parser.allocator);
-        node.rparen_token = arg4;
-        result = &node.base;
-    }
-    fn TypeExpr(QuestionMark: *Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = .OptionalType;
-        node.rhs = arg2;
-        result = &node.base;
-    }
-    fn TypeExpr(Keyword_promise: *Token) *Node {
-        const node = try parser.createNode(Node.PromiseType);
-        node.promise_token = arg1;
-        result = &node.base;
-    }
-    fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PromiseType);
-        node.promise_token = arg1;
-        node.result = Node.PromiseType.Result{ .arrow_token = arg2, .return_type = arg3 };
-        result = &node.base;
-    }
-    // ArrayType
-    fn TypeExpr(LBracket: *Token, Expr: *Node, RBracket: *Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .ArrayType = arg2 };
-        node.rhs = arg4;
-        result = &node.base;
-    }
-    // SliceType
-    fn TypeExpr(LBracket: *Token, RBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node.PrefixOp.PtrInfo.Align, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .SliceType = Node.PrefixOp.PtrInfo{ .allowzero_token = arg3, .align_info = if (arg4) |p| p.* else null, .const_token = arg5, .volatile_token = arg6 } };
-        node.rhs = arg7;
-        result = &node.base;
-    }
-    // PtrType
-    fn TypeExpr(Asterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node.PrefixOp.PtrInfo.Align, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .PtrType = Node.PrefixOp.PtrInfo{ .allowzero_token = arg2, .align_info = if (arg3) |p| p.* else null, .const_token = arg4, .volatile_token = arg5 } };
-        node.rhs = arg6;
-        result = &node.base;
-    }
-    fn TypeExpr(AsteriskAsterisk: Precedence_none(*Token), MaybeAllowzero: ?*Token, MaybeAlign: ?*Node.PrefixOp.PtrInfo.Align, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
-        arg1.id = .Asterisk;
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .PtrType = Node.PrefixOp.PtrInfo{ .allowzero_token = arg2, .align_info = if (arg3) |p| p.* else null, .const_token = arg4, .volatile_token = arg5 } };
-        node.rhs = arg6;
-        const outer = try parser.createNode(Node.PrefixOp);
-        outer.op_token = arg1;
-        outer.op = Node.PrefixOp.Op{ .PtrType = Node.PrefixOp.PtrInfo{ .allowzero_token = null, .align_info = null, .const_token = null, .volatile_token = null } };
-        outer.rhs = &node.base;
-        result = &outer.base;
-    }
-    fn TypeExpr(BracketStarBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node.PrefixOp.PtrInfo.Align, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .PtrType = Node.PrefixOp.PtrInfo{ .allowzero_token = arg2, .align_info = if (arg3) |p| p.* else null, .const_token = arg4, .volatile_token = arg5 } };
-        node.rhs = arg6;
-        result = &node.base;
-    }
-    fn TypeExpr(BracketStarCBracket: *Token, MaybeAllowzero: ?*Token, MaybeAlign: ?*Node.PrefixOp.PtrInfo.Align, MaybeConst: ?*Token, MaybeVolatile: ?*Token, TypeExpr: *Node) *Node {
-        const node = try parser.createNode(Node.PrefixOp);
-        node.op_token = arg1;
-        node.op = Node.PrefixOp.Op{ .PtrType = Node.PrefixOp.PtrInfo{ .allowzero_token = arg2, .align_info = if (arg3) |p| p.* else null, .const_token = arg4, .volatile_token = arg5 } };
-        node.rhs = arg6;
-        result = &node.base;
     }
 };

@@ -17,6 +17,7 @@ pub const Parser = struct {
     state: i16 = 0,
     stack: Stack,
     allocator: *std.mem.Allocator,
+    expect_return_type: bool = false,
 
     pub fn init(allocator: *std.mem.Allocator) Self {
         return Self{ .stack = Stack.init(allocator), .allocator = allocator };
@@ -92,7 +93,7 @@ pub const Parser = struct {
                         }
                     }
                 }
-                if (shift > 0) {
+                if (shift > 0 and !(token_id == .LBrace and self.expect_return_type)) {
                     warn("{} ", idToString(token.id));
                     try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token_id } });
                     self.state = shift;
@@ -125,6 +126,16 @@ pub const Parser = struct {
                             self.printStack();
                         }
                         self.state = goto;
+                        if(token_id == .RParen) {
+                            switch(self.stack.at(self.stack.len-1).value) {
+                                .Terminal => |stack_id| {
+                                    if(stack_id == .MaybeParamDeclList) {
+                                        self.expect_return_type = true;
+                                    }
+                                },
+                                else => {}
+                            }
+                        }
                         continue :outer;
                     }
                 }
