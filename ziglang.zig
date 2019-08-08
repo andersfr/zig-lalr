@@ -105,6 +105,9 @@ pub extern "LALR" const zig_grammar = struct {
             LBracket,
             Period,
         },
+        left: enum {
+            Precedence_async,
+        },
     };
 
     fn Root(MaybeRootDocComment: ?*Node.DocComment, MaybeContainerMembers: ?*NodeList) *Node {
@@ -370,13 +373,13 @@ pub extern "LALR" const zig_grammar = struct {
         node.async_token = arg1;
         result = node;
     }
-    // fn AsyncPrefix(Keyword_async: *Token, AngleBracketLeft: *Token, Expr: *Node, AngleBracketRight: Precedence_none(*Token)) *Node.AsyncAttribute {
-    //     const node = try parser.createNode(Node.AsyncAttribute);
-    //     node.async_token = arg1;
-    //     node.allocator_type = arg3;
-    //     node.rangle_bracket = arg4;
-    //     result = node;
-    // }
+    fn AsyncPrefix(Keyword_async: *Token, LParen: *Token, Expr: *Node, RParen: Precedence_none(*Token)) *Node.AsyncAttribute {
+        const node = try parser.createNode(Node.AsyncAttribute);
+        node.async_token = arg1;
+        node.allocator_type = arg3;
+        node.rangle_bracket = arg4;
+        result = node;
+    }
 
     // Variables
     fn VarDecl(Keyword_const: *Token, Identifier: *Token, MaybeColonTypeExpr: ?*Node, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, MaybeEqualExpr: ?*Node, Semicolon: *Token) *Node {
