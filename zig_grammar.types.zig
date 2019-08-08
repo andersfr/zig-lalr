@@ -208,7 +208,16 @@ pub const Node = struct {
                 std.debug.warn(" ");
             }
         }
-        std.debug.warn("{}\n", @tagName(self.id));
+        const first = self.firstToken();
+        const last = self.lastToken();
+        const first_nl = first.line.?;
+        const last_nl = last.line.?;
+        const first_col = first.start - first_nl.end + 1;
+        const last_col = last.end - last_nl.end;
+        const first_line = first_nl.start;
+        const last_line = last_nl.start;
+
+        std.debug.warn("{} ({}:{}-{}:{})\n", @tagName(self.id), first_line, first_col, last_line, last_col);
 
         var child_i: usize = 0;
         while (self.iterate(child_i)) |child| : (child_i += 1) {

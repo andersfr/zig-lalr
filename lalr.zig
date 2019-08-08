@@ -257,6 +257,7 @@ fn writeGrammar(grammar: Grammar) !void {
             \\    id: Id,
             \\    start: usize,
             \\    end: usize,
+            \\    line: ?*@This() = null,
             \\};
             \\
             \\pub const Id = enum(u8) {
@@ -423,6 +424,7 @@ fn writeGrammar(grammar: Grammar) !void {
         // Produces
         {
             try out.stream.print("pub const produces_table = [{}]u8 {}\n", grammar.productions.len, "{");
+            try out.stream.write("    ");
             var it = grammar.productions.iterator();
             while(it.next()) |production| {
                 try out.stream.print("{}, ", production.terminal_id);
@@ -433,6 +435,7 @@ fn writeGrammar(grammar: Grammar) !void {
         // Consumes
         {
             try out.stream.print("pub const consumes_table = [{}]u8 {}\n", grammar.productions.len, "{");
+            try out.stream.write("    ");
             var it = grammar.productions.iterator();
             while(it.next()) |production| {
                 try out.stream.print("{}, ", production.consumes);
@@ -442,42 +445,58 @@ fn writeGrammar(grammar: Grammar) !void {
 
         // Goto
         {
-            try out.stream.print("pub const goto_table = [{}][]const i16 {}\n", grammar.transitions.len, "{");
-            var it = grammar.transitions.iterator();
-            while(it.next()) |transition| {
+            try out.stream.print("pub const goto_table = [_][{}]i16 {}\n", grammar.epsilon_index, "{");
+            { 
                 try out.stream.write("    [_]i16{");
+                var i: usize = 0; while(i < grammar.epsilon_index) : (i += 1) { try out.stream.write("0, "); }
+                try out.stream.write("},\n");
+            }
+            var it = grammar.transitions.iterator();
+            outer: while(it.next()) |transition| {
                 var i: usize = 0;
-                var c: usize = 0;
-                {
+                blk: {
                     while(i < grammar.epsilon_index) : (i += 1) {
                         if(transition[i] != 0)
-                            c += 1;
+                            break :blk;
                     }
+                    continue :outer;
                 }
-                if(c > 0 and c < 16)
-                {
-                    i = 0;
-                    while(i < grammar.epsilon_index) : (i += 1) {
-                        if(transition[i] != 0)
-                            try out.stream.print("{}, {}, ", i, transition[i]);
+                try out.stream.write("    [_]i16{");
+                i = 0;
+                while(i < grammar.epsilon_index) : (i += 1) {
+                    if(transition[i] != 0) {
+                        try out.stream.print("{}, ", transition[i]);
                     }
-                }
-                else if(c > 0)
-                {
-                    i = 1;
-                    try out.stream.write("-1, ");
-                    while(i < grammar.epsilon_index) : (i += 1) {
-                        if(transition[i] != 0) {
-                            try out.stream.print("{}, ", transition[i]);
-                        }
-                        else {
-                            try out.stream.write("0, ");
-                        }
+                    else {
+                        try out.stream.write("0, ");
                     }
                 }
                 try out.stream.write("},\n");
             }
             try out.stream.write("};\n\n");
+
+            try out.stream.print("pub const goto_index = [{}]u16 {}\n", grammar.transitions.len, "{");
+            it = grammar.transitions.iterator();
+            var c: usize = 1;
+            try out.stream.write("    ");
+            while(it.next()) |transition| {
+                var i: usize = 0;
+                var empty: bool = true;
+                {
+                    while(empty and i < grammar.epsilon_index) : (i += 1) {
+                        if(transition[i] != 0)
+                            empty = false;
+                    }
+                }
+                if(empty) {
+                    try out.stream.write("0, ");
+                }
+                else {
+                    try out.stream.print("{}, ", c);
+                    c += 1;
+                }
+            }
+            try out.stream.write("\n};\n\n");
         }
 
         // Shift

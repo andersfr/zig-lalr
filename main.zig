@@ -114,43 +114,18 @@ pub const Parser = struct {
                 }
                 if (reduce > 0) {
                     const consumes = consumes_table[@bitCast(u16, reduce)];
-                    // const produces = produces_table[@bitCast(u16, reduce)];
-                    // var pop = consumes;
-                    // while (pop > 0) : (pop -= 1) {
-                    //     self.state = self.stack.pop().state;
-                    // }
                     const produces = @enumToInt(try reduce_actions(Self, self, reduce, self.state));
                     state = @bitCast(u16, self.state);
 
                     // Gotos
-                    if (goto_table[state].len > 0) {
-                        var goto: i16 = 0;
-                        // Full table
-                        if (goto_table[state][0] == -1) {
-                            goto = goto_table[state][produces];
+                    const goto: i16 = goto_table[goto_index[state]][produces];
+                    if (goto > 0) {
+                        if(consumes > 0) {
+                            warn("\n");
+                            self.printStack();
                         }
-                        // Key-Value pairs
-                        else {
-                            var i: usize = 0;
-                            while (i < goto_table[state].len) : (i += 2) {
-                                if (goto_table[state][i] == @intCast(i16, produces)) {
-                                    goto = goto_table[state][i + 1];
-                                    break;
-                                }
-                            }
-                        }
-                        if (goto > 0) {
-                            if(consumes > 0) {
-                                // try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
-                                warn("\n");
-                                self.printStack();
-                            }
-                            // else {
-                            //     try self.stack.append(StackItem{ .item = 0, .state = self.state, .value = StackValue{ .Terminal = @intToEnum(TerminalId, produces) } });
-                            // }
-                            self.state = goto;
-                            continue :outer;
-                        }
+                        self.state = goto;
+                        continue :outer;
                     }
                 }
             }
@@ -186,27 +161,33 @@ pub fn main() !void {
 
     var lexer = Lexer.init(buffer);
     var parser = Parser.init(allocator);
-    var line: usize = 1;
     defer parser.deinit();
 
     var tokens = std.ArrayList(Token).init(allocator);
     defer tokens.deinit();
+    try tokens.append(Token{ .start = 0, .end = 0, .id = .Newline });
     while (true) {
         var token = lexer.next();
         try tokens.append(token);
         if(token.id == .Eof)
             break;
     }
-    var i: usize = 0;
+    var i: usize = 1;
     // If file starts with a DocComment this is considered a RootComment
     while(i < tokens.len) : (i += 1) {
         tokens.items[i].id = if(tokens.items[i].id == .DocComment) .RootDocComment else break;
     }
     i = 0;
+    var line: usize = 0;
+    var last_newline = &tokens.items[0];
     while(i < tokens.len) : (i += 1) {
         const token = &tokens.items[i];
+
+        token.line = last_newline;
         if(token.id == .Newline) {
             line += 1;
+            token.start = line;
+            last_newline = token;
             continue;
         }
         if(token.id == .LineComment) continue;

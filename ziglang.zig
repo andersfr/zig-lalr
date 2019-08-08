@@ -225,6 +225,15 @@ pub extern "LALR" const zig_grammar = struct {
         arg1.body_node = &arg2.base;
         result = &arg1.base;
     }
+    fn TopLevelDecl(AsyncPrefix: *Node.AsyncAttribute, FnProto: *Node.FnProto, Semicolon: *Token) *Node {
+        result = &arg2.base;
+        arg2.async_attr = arg1;
+    }
+    fn TopLevelDecl(AsyncPrefix: *Node.AsyncAttribute, FnProto: *Node.FnProto, Block: *Node.Block) *Node {
+        result = &arg2.base;
+        arg2.async_attr = arg1;
+        arg2.body_node = &arg3.base;
+    }
     fn TopLevelDecl(Keyword_extern: *Token, StringLiteral: *Token, FnProto: *Node.FnProto, Semicolon: *Token) *Node {
         result = &arg3.base;
         const lib_name = try parser.createNode(Node.StringLiteral);
@@ -317,28 +326,6 @@ pub extern "LALR" const zig_grammar = struct {
     fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), FnProtoType: *Node) *Node.FnProto {
         const node = try parser.createNode(Node.FnProto);
         node.cc_token = arg1;
-        node.fn_token = arg2;
-        node.name_token = arg3;
-        node.params = if (arg5) |p| p.* else NodeList.init(parser.allocator);
-        node.align_expr = arg7;
-        node.section_expr = arg8;
-        node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = arg10 };
-        result = node;
-    }
-    fn FnProto(AsyncPrefix: *Node.AsyncAttribute, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, FnProtoType: *Node) *Node.FnProto {
-        const node = try parser.createNode(Node.FnProto);
-        node.async_attr = arg1;
-        node.fn_token = arg2;
-        node.name_token = arg3;
-        node.params = if (arg5) |p| p.* else NodeList.init(parser.allocator);
-        node.align_expr = arg7;
-        node.section_expr = arg8;
-        node.return_type = Node.FnProto.ReturnType{ .Explicit = arg9 };
-        result = node;
-    }
-    fn FnProto(AsyncPrefix: *Node.AsyncAttribute, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), FnProtoType: *Node) *Node.FnProto {
-        const node = try parser.createNode(Node.FnProto);
-        node.async_attr = arg1;
         node.fn_token = arg2;
         node.name_token = arg3;
         node.params = if (arg5) |p| p.* else NodeList.init(parser.allocator);
@@ -664,13 +651,33 @@ pub extern "LALR" const zig_grammar = struct {
         result = arg2;
     }
 
+    fn Expr(AsyncPrefix: *Node.AsyncAttribute, Expr: *Node) *Node {
+        result = arg2;
+        if(arg2.cast(Node.SuffixOp)) |suffix| {
+            switch(suffix.op) {
+                .Call => |call| {
+                    suffix.op.Call.async_attr = arg1;
+                },
+                else => {
+                    // TODO: Error not a call
+                }
+            }
+        }
+        else {
+            // TODO: Error not a call
+        }
+    }
+
     // Grouped
     fn Expr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {
-        const node = try parser.createNode(Node.GroupedExpression);
-        node.lparen = arg1;
-        node.expr = arg2;
-        node.rparen = arg3;
-        result = &node.base;
+        if(arg2.id != .GroupedExpression) {
+            const node = try parser.createNode(Node.GroupedExpression);
+            node.lparen = arg1;
+            node.expr = arg2;
+            node.rparen = arg3;
+            result = &node.base;
+        }
+        else result = arg2;
     }
 
     // Infix
@@ -1033,6 +1040,11 @@ pub extern "LALR" const zig_grammar = struct {
         node.op_token = arg1;
         node.op = .OptionalType;
         node.rhs = arg2;
+        result = &node.base;
+    }
+    fn Expr(Keyword_promise: *Token) *Node {
+        const node = try parser.createNode(Node.PromiseType);
+        node.promise_token = arg1;
         result = &node.base;
     }
     fn Expr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, Expr: *Node) *Node {
@@ -1895,6 +1907,35 @@ pub extern "LALR" const zig_grammar = struct {
         result = &node.base;
     }
     fn TypeExpr(ContainerDecl: *Node) *Node;
+    fn TypeExpr(FnProto: *Node) *Node;
+
+    fn TypeExpr(AsyncPrefix: *Node.AsyncAttribute, TypeExpr: *Node) *Node {
+        result = arg2;
+        if(arg2.cast(Node.SuffixOp)) |suffix| {
+            switch(suffix.op) {
+                .Call => |call| {
+                    suffix.op.Call.async_attr = arg1;
+                },
+                else => {
+                    // TODO: Error not a call
+                }
+            }
+        }
+        else {
+            // TODO: Error not a call
+        }
+    }
+
+    fn TypeExpr(LParen: *Token, Expr: *Node, RParen: *Token) *Node {
+        if(arg2.id != .GroupedExpression) {
+            const node = try parser.createNode(Node.GroupedExpression);
+            node.lparen = arg1;
+            node.expr = arg2;
+            node.rparen = arg3;
+            result = &node.base;
+        }
+        else result = arg2;
+    }
 
     // a[]
     fn TypeExpr(TypeExpr: *Node, LBracket: *Token, Expr: *Node, RBracket: *Token) *Node {
@@ -1953,6 +1994,7 @@ pub extern "LALR" const zig_grammar = struct {
         node.rtoken = arg4;
         result = &node.base;
     }
+    
     fn TypeExpr(TypeExpr: *Node, Bang: *Token, TypeExpr: *Node) *Node {
         const node = try parser.createNode(Node.InfixOp);
         node.lhs = arg1;
@@ -1973,6 +2015,11 @@ pub extern "LALR" const zig_grammar = struct {
         node.op_token = arg1;
         node.op = .OptionalType;
         node.rhs = arg2;
+        result = &node.base;
+    }
+    fn TypeExpr(Keyword_promise: *Token) *Node {
+        const node = try parser.createNode(Node.PromiseType);
+        node.promise_token = arg1;
         result = &node.base;
     }
     fn TypeExpr(Keyword_promise: *Token, MinusAngleBracketRight: *Token, TypeExpr: *Node) *Node {
