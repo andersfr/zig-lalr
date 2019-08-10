@@ -16,14 +16,17 @@ usingnamespace Transitions;
 pub const Parser = struct {
     state: i16 = 0,
     stack: Stack,
-    allocator: *std.mem.Allocator,
+    source: []const u8,
+    arena: std.heap.ArenaAllocator,
 
-    pub fn init(allocator: *std.mem.Allocator) Self {
-        return Self{ .stack = Stack.init(allocator), .allocator = allocator };
+    pub fn init(allocator: *std.mem.Allocator, source: []const u8) Self {
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        return Self{ .stack = Stack.init(allocator), .source = source, .arena = arena };
     }
 
     pub fn deinit(self: *Self) void {
         self.stack.deinit();
+        self.arena.deinit();
     }
 
     fn printStack(self: *const Self) void {
@@ -41,11 +44,21 @@ pub const Parser = struct {
     pub const Stack = std.ArrayList(StackItem);
 
     pub fn createVariant(self: *Self, comptime T: type) !*T {
-        const variant = try self.allocator.create(T);
+        const variant = try self.arena.allocator.create(T);
         // Allocator memsets to 0xaa but we rely on structs being zero-initialized
-        @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
+        @memset(@ptrCast([*]align(@alignOf(T)) u8, variant), 0, @sizeOf(T));
         variant.base.id = Variant.typeToId(T);
         return variant;
+    }
+
+    pub fn createVariantList(self: *Self, comptime T: type) !*T {
+        const list = try self.arena.allocator.create(T);
+        list.* = T.init(&self.arena.allocator);
+        return list;
+    }
+
+    pub fn tokenString(self: *const Self, token: *Token) []const u8 {
+        return self.source[token.start..token.end];
     }
 
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
@@ -139,7 +152,7 @@ pub fn main() !void {
     const buffer = try stream.stream.readAllAlloc(allocator, 0x1000000);
 
     var lexer = Lexer.init(buffer);
-    var parser = Parser.init(allocator);
+    var parser = Parser.init(allocator, buffer);
     defer parser.deinit();
 
     var tokens = std.ArrayList(Token).init(allocator);

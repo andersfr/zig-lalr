@@ -9,6 +9,7 @@ const FlatHash = @import("flat_hash/flat_hash.zig");
 usingnamespace FlatHash;
 
 pub const VariantList = std.ArrayList(*Variant);
+pub const VariantMap = Dictionary(*Variant);
 
 pub const Variant = struct {
     id: Id,
@@ -102,7 +103,7 @@ pub const Variant = struct {
     pub const Object = struct {
         base: Variant,
         lbrace: TokenIndex,
-        fields: Dictionary(*Variant),
+        fields: VariantMap,
         rbrace: TokenIndex,
 
         pub fn iterate(self: *Object, index: usize) ?*Variant {

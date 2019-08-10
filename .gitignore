@@ -4,6 +4,10 @@ zig_grammar.txt
 zig_grammar.tokens.zig
 zig_grammar.tables.zig
 zig_grammar.actions.zig
+json_grammar.txt
+json_grammar.tokens.zig
+json_grammar.tables.zig
+json_grammar.actions.zig
 lexer.tab.zig
 isocores.txt
 main

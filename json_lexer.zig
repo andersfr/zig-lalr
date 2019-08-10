@@ -33,7 +33,6 @@ pub const Lexer = struct {
         } else {
             self.peek = -1;
         }
-        // @import("std").debug.warn("{} ", self.source[self.index-1..self.index]);
         return self.char;
     }
 
@@ -76,7 +75,7 @@ pub const Lexer = struct {
         self.first = self.index;
 
         // Keep parsing until EOF
-        while (self.char != -1) {
+        while (self.peek != -1) {
             switch(self.peek) {
                 '"' => return self.getString(),
                 '0'...'9' => return self.getInteger(),
