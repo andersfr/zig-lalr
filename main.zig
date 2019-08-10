@@ -107,6 +107,23 @@ pub const Parser = struct {
                     return true;
                 }
                 else if(ptr[1].id != close_token_id and own_line_offset == next_line_offset) {
+                    // TODO: workaround for zig fmt bug
+                    var i = self.stack.items.len-1;
+                    while(i > 0) : (i -= 1) {
+                        switch(self.stack.items[i].value) {
+                            .Terminal => |id| {
+                                if(id == .Statements or id == .ContainerMembers) {
+                                    const list = @intToPtr(*NodeList, self.stack.items[i].item);
+                                    const last_token = list.items[list.len-1].firstToken();
+                                    const line_offset = last_token.start - last_token.line.?.end;
+                                    if(line_offset < own_line_offset)
+                                        return false;
+                                    return true;
+                                }
+                            },
+                            else => {}
+                        }
+                    }
                     return true;
                 }
             }
@@ -377,8 +394,6 @@ pub fn main() !void {
         if(result == .Fail) {
             if((try parser.recovery(token.id, token, &i)) == .Ok)
                 continue;
-            std.debug.warn("\nline: {} => {}\n", line, token.id);
-            return;
         }
 
         // Incomplete line
@@ -386,13 +401,15 @@ pub fn main() !void {
         if(parser.resync()) {
             parser.printStack();
             const current_line = token.line;
-            while(i < tokens.len and tokens.items[i].id != .Newline) : (i += 1) {}
+            if(result == .IncompleteLine) {
+                while(i < tokens.len and tokens.items[i].id != .Newline) : (i += 1) {}
+            }
             i -= 1;
             continue :parser_loop;
         }
 
         // Give up
-        warn("Failed\n");
+        std.debug.warn("\nline: {} => {}\n", line, token.id);
         return;
     }
     warn("\n");

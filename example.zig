@@ -39,6 +39,10 @@ const s = struct {
         }
 
         var v = []u8{ 0, 0
+        const return_type_expr = (try parseVarType(arena, it, tree)) orelse
+            try expectNode(arena, it, tree, parseTypeExpr, AstError{
+            .ExpectedReturnType = AstError.ExpectedReturnType{ .token = it.index },
+        });
     }
 };
 
