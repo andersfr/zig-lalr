@@ -3,8 +3,8 @@ MODE=--release-fast
 .PHONY: clean
 
 all: main json
-	./main
 	./json
+	./main
 
 run_main: main
 	zig run main.zig

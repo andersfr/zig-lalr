@@ -150,21 +150,6 @@ pub extern "LALR" const zig_grammar = struct {
     fn MaybeContainerMembers() ?*NodeList;
     fn MaybeContainerMembers(ContainerMembers: *NodeList) ?*NodeList;
 
-    // Note: these exist to allow a trailing container field without comma
-    fn MaybeContainerMembers(MaybeDocComment: ?*Node.DocComment, MaybePub: ?*Token, ContainerField: *Node) ?*NodeList {
-        const node = arg3.unsafe_cast(Node.ContainerField);
-        node.doc_comments = arg1;
-        node.visib_token = arg2;
-        result = try parser.createListWithNode(NodeList, arg3);
-    }
-    fn MaybeContainerMembers(ContainerMembers: *NodeList, MaybeDocComment: ?*Node.DocComment, MaybePub: ?*Token, ContainerField: *Node) *NodeList {
-        result = arg1;
-        const node = arg4.unsafe_cast(Node.ContainerField);
-        node.doc_comments = arg2;
-        node.visib_token = arg3;
-        try arg1.append(arg4);
-    }
-
     fn ContainerMembers(ContainerMembers: *NodeList, ContainerMember: *Node) *NodeList {
         result = arg1;
         try arg1.append(arg2);

@@ -36,6 +36,8 @@ pub const Parser = struct {
         }
     }
 
+    const ActionResult = enum { Ok, Fail, IncompleteLine };
+
     pub const Self = @This();
 
     pub const Stack = std.ArrayList(StackItem);
@@ -85,7 +87,34 @@ pub const Parser = struct {
         return list;
     }
 
-    pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
+    fn earlyDetectUnmatched(self: *Self, open_token_id: Id, close_token_id: Id, token: *Token) bool {
+        var ptr = @ptrCast([*]Token, token)+1;
+        var cnt: usize = 1;
+        // Check if it gets matched on same line
+        while(ptr[0].id != .Eof and ptr[0].id != .Newline and cnt > 0) : (ptr += 1) {
+            if(ptr[0].id == open_token_id) cnt += 1;
+            if(ptr[0].id == close_token_id) cnt -= 1;
+        }
+        // Still unmatched
+        if(cnt > 0) {
+            // Check that more tokens are available
+            if(ptr[0].id == .Newline) {
+                // Look at indentation and make a guess
+                const next_line_offset = ptr[1].start - ptr[0].end;
+                const own_line = @ptrCast([*]Token, token.line);
+                const own_line_offset =  own_line[1].start - own_line[0].end;
+                if(own_line_offset > next_line_offset) {
+                    return true;
+                }
+                else if(ptr[1].id != close_token_id and own_line_offset == next_line_offset) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    pub fn action(self: *Self, token_id: Id, token: *Token) !ActionResult {
         const id = @intCast(i16, @enumToInt(token_id));
 
         action_loop: while (true) {
@@ -109,10 +138,26 @@ pub const Parser = struct {
                     }
                 }
                 if (shift > 0) {
+                    // Unmatched {, [, ( must be detected early
+                    switch(token.id) {
+                        .LBrace, .LCurly => {
+                            if(self.earlyDetectUnmatched(Id.LBrace, Id.RBrace, token))
+                                return ActionResult.IncompleteLine;
+                        },
+                        .LParen => {
+                            if(self.earlyDetectUnmatched(Id.LParen, Id.RParen, token))
+                                return ActionResult.IncompleteLine;
+                        },
+                        .LBracket => {
+                            if(self.earlyDetectUnmatched(Id.LBracket, Id.RBracket, token))
+                                return ActionResult.IncompleteLine;
+                        },
+                        else => {}
+                    }
                     warn("{} ", idToString(token.id));
                     try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token_id } });
                     self.state = shift;
-                    return true;
+                    return ActionResult.Ok;
                 }
             }
             // Reduces
@@ -151,16 +196,16 @@ pub const Parser = struct {
             switch(self.stack.at(0).value) {
                 .Terminal => |terminal_id| {
                     if(terminal_id == .Root)
-                        return true;
+                        return ActionResult.Ok;
                 },
                 else => {}
             }
         }
 
-        return false;
+        return ActionResult.Fail;
     }
 
-    fn recovery(self: *Self, token_id: Id, token: *Token, index: *usize) !bool {
+    fn recovery(self: *Self, token_id: Id, token: *Token, index: *usize) !ActionResult {
         const top = self.stack.len-1;
         const items = self.stack.items;
 
@@ -175,20 +220,57 @@ pub const Parser = struct {
                                     proto.body_node = return_type;
                                     proto.return_type.Explicit = try self.createRecoveryNode(return_type.unsafe_cast(Node.Block).lbrace);
                                     index.* -= 1;
-                                    return self.action(Id.Semicolon, token);
+                                    return try self.action(Id.Semicolon, token);
                                 }
                             },
                             else => {}
                         }
                     }
                 }
+                // Missing function return type (no body block)
                 else if(id == .MaybeLinkSection and token_id == .Semicolon) {
                     const recovery_token = try self.createRecoveryToken(token);
                     index.* -= 1;
                     return try self.action(Id.Recovery, recovery_token);
                 }
+                // Missing semicolon after var decl or a comma
+                else if(id == .MaybeEqualExpr) {
+                    if(token_id != .Comma)
+                        index.* -= 1;
+                    return try self.action(Id.Semicolon, token);
+                }
+                // Semicolon after statement
+                else if(id == .Statements and token_id == .Semicolon) {
+                    return ActionResult.Ok;
+                }
+                // Missing semicolon after AssignExpr
+                else if(id == .AssignExpr and token_id != .Semicolon) {
+                    index.* -= 1;
+                    return try self.action(Id.Semicolon, token);
+                }
+                // Missing comma after ContainerField
+                else if(id == .ContainerField and token_id == .RBrace) {
+                    index.* -= 1;
+                    return try self.action(Id.Comma, token);
+                }
             },
-            .Token => |id| {}
+            .Token => |id| {
+                if(id == .RParen and self.stack.len >= 4) {
+                    switch(items[top-3].value) {
+                        .Terminal => |terminal_id| {},
+                        .Token => |loop_id| {
+                            // Missing PtrIndexPayload in for loop
+                            if(loop_id == .Keyword_for) {
+                                const recovery_node = try self.createRecoveryNode(token);
+                                try self.stack.append(StackItem{ .item = @ptrToInt(recovery_node), .state = self.state, .value = StackValue{ .Terminal = .PtrIndexPayload } });
+                                self.state = goto_table[goto_index[@bitCast(u16, self.state)]][@enumToInt(TerminalId.PtrIndexPayload)];
+                                index.* -= 1;
+                                return ActionResult.Ok;
+                            }
+                        }
+                    }
+                }
+            }
         }
         if(token_id == .Semicolon) {
             switch(items[top].value) {
@@ -201,33 +283,41 @@ pub const Parser = struct {
                         self.stack.len -= 1;
                         return try self.action(Id.Comma, token);
                     }
-                    // Recovers ContainerField;
-                    else if(id == .MaybeContainerMembers) {
-                        // Search for a state that produces MaybeContainerMembers and consumes exactly 1 argument
-                        // Note: MaybeContainerMembers <- ContainerMembers .
-                        var i: usize = 0;
-                        for(reduce_table) |r| {
-                            // Could be a compile time constant but it is one of the top most entries
-                            if(r.len > 0) {
-                                const r1 = @bitCast(u16, r[1]);
-                                if(produces_table[r1] == @enumToInt(TerminalId.MaybeContainerMembers) and consumes_table[r1] == 1) {
-                                    self.state = @bitCast(i16, @truncate(u16, i));
-                                    return true;
-                                }
-                            }
-                            i += 1;
-                        }
-                        return false;
+                    // Recovers after ContainerField;
+                    else if(id == .ContainerField) {
+                        return try self.action(Id.Comma, token);
                     }
                 },
                 else => {}
             }
         }
         else if(token_id == .Comma) {
-            if(try self.action(Id.Semicolon, token))
-                return true;
+            return try self.action(Id.Semicolon, token);
         }
 
+        return ActionResult.Fail;
+    }
+
+    pub fn resync(self: *Self) bool {
+        while(self.stack.popOrNull()) |top| {
+            switch(top.value) {
+                .Token => |id| {
+                    if(id == .LBrace) {
+                        self.stack.items[self.stack.len] = top;
+                        self.stack.len += 1;
+                        return true;
+                    }
+                },
+                .Terminal => |id| {
+                    if(id == .Statements or id == .ContainerMembers) {
+                        self.stack.items[self.stack.len] = top;
+                        self.stack.len += 1;
+                        return true;
+                    }
+                }
+            }
+            self.state = top.state;
+        }
         return false;
     }
 };
@@ -268,7 +358,7 @@ pub fn main() !void {
     i = shebang;
     var line: usize = 0;
     var last_newline = &tokens.items[0];
-    while(i < tokens.len) : (i += 1) {
+    parser_loop: while(i < tokens.len) : (i += 1) {
         const token = &tokens.items[i];
 
         token.line = last_newline;
@@ -280,12 +370,30 @@ pub fn main() !void {
         }
         if(token.id == .LineComment) continue;
 
-        if(!try parser.action(token.id, token)) {
-            if(try parser.recovery(token.id, token, &i))
+        const result = try parser.action(token.id, token);
+        if(result == .Ok)
+            continue;
+
+        if(result == .Fail) {
+            if((try parser.recovery(token.id, token, &i)) == .Ok)
                 continue;
             std.debug.warn("\nline: {} => {}\n", line, token.id);
-            break;
+            return;
         }
+
+        // Incomplete line
+        warn("\n");
+        if(parser.resync()) {
+            parser.printStack();
+            const current_line = token.line;
+            while(i < tokens.len and tokens.items[i].id != .Newline) : (i += 1) {}
+            i -= 1;
+            continue :parser_loop;
+        }
+
+        // Give up
+        warn("Failed\n");
+        return;
     }
     warn("\n");
     const Root = @intToPtr(?*Node.Root, parser.stack.at(0).item) orelse return;

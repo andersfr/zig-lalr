@@ -135,7 +135,7 @@
 {
     if(self.index == 1) return Id.LBrace;
     switch(self.source[self.index-2]) {
-        ' ', '\t', '\r', '\n' =>  return Id.LBrace,
+        ' ', ')', '\t', '\r', '\n' =>  return Id.LBrace,
         else => return Id.LCurly,
     }
 }
