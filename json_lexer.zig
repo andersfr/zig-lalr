@@ -11,7 +11,7 @@ pub const Lexer = struct {
     const Self = @This();
 
     pub fn init(source: []const u8) Lexer {
-        var peek: u8 = 255;
+        var peek: i32 = -1;
         if (source.len > 0) {
             peek = source[0];
         }
@@ -41,14 +41,14 @@ pub const Lexer = struct {
         while (true) {
             switch (self.peek) {
                 '\n', -1 => {
-                    return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                    return Token{ .id = .Invalid, .start = self.first+1, .end = self.index-1 };
                 },
                 '\\' => {
                     _ = self.getc();
                 },
                 '"' => {
                     _ = self.getc();
-                    return Token{ .id = .StringLiteral, .start = self.first, .end = self.index };
+                    return Token{ .id = .StringLiteral, .start = self.first+1, .end = self.index-1 };
                 },
                 else => {},
             }
@@ -79,6 +79,12 @@ pub const Lexer = struct {
             switch(self.peek) {
                 '"' => return self.getString(),
                 '0'...'9' => return self.getInteger(),
+                '-' => {
+                    _ = self.getc();
+                    if(self.peek >= '1' and self.peek <= '9')
+                        return self.getInteger();
+                    return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                },
                 ' ','\t','\r','\n' => _ = self.getc(),
                 '{' => {
                     _ = self.getc();

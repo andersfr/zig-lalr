@@ -17,16 +17,14 @@ pub const Parser = struct {
     state: i16 = 0,
     stack: Stack,
     source: []const u8,
-    arena: std.heap.ArenaAllocator,
+    arena_allocator: *std.mem.Allocator,
 
-    pub fn init(allocator: *std.mem.Allocator, source: []const u8) Self {
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        return Self{ .stack = Stack.init(allocator), .source = source, .arena = arena };
+    pub fn init(allocator: *std.mem.Allocator, arena: *std.mem.Allocator, source: []const u8) Self {
+        return Self{ .stack = Stack.init(allocator), .source = source, .arena_allocator = arena };
     }
 
     pub fn deinit(self: *Self) void {
         self.stack.deinit();
-        self.arena.deinit();
     }
 
     fn printStack(self: *const Self) void {
@@ -44,21 +42,43 @@ pub const Parser = struct {
     pub const Stack = std.ArrayList(StackItem);
 
     pub fn createVariant(self: *Self, comptime T: type) !*T {
-        const variant = try self.arena.allocator.create(T);
-        // Allocator memsets to 0xaa but we rely on structs being zero-initialized
-        @memset(@ptrCast([*]align(@alignOf(T)) u8, variant), 0, @sizeOf(T));
+        const variant = try self.arena_allocator.create(T);
         variant.base.id = Variant.typeToId(T);
         return variant;
     }
 
     pub fn createVariantList(self: *Self, comptime T: type) !*T {
-        const list = try self.arena.allocator.create(T);
-        list.* = T.init(&self.arena.allocator);
+        const list = try self.arena_allocator.create(T);
+        list.* = T.init(self.arena_allocator);
         return list;
     }
 
     pub fn tokenString(self: *const Self, token: *Token) []const u8 {
         return self.source[token.start..token.end];
+    }
+
+    pub fn unescapeTokenString(self: *const Self, token: *Token) ![]u8 {
+        const slice = self.source[token.start..token.end];
+        var size = slice.len;
+        var i: usize = 0;
+        while(i < size) : (i += 1) {
+            if(slice[i] == '\\') {
+                size -= 1;
+                i += 1;
+            }
+        }
+        const result = try self.arena_allocator.alloc(u8, size);
+        i = 0;
+        var j: usize = 0;
+        while(j < slice.len) : (j += 1) {
+            if(slice[j] == '\\' or slice[j] == '\"') {
+                j += 1;
+            }
+            result[i] = slice[j];
+            i += 1;
+        }
+
+        return result;
     }
 
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
@@ -85,7 +105,7 @@ pub const Parser = struct {
                     }
                 }
                 if (shift > 0) {
-                    warn("{} ", idToString(token.id));
+                    // warn("{} ", idToString(token.id));
                     try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token_id } });
                     self.state = shift;
                     return true;
@@ -112,10 +132,10 @@ pub const Parser = struct {
                     // Gotos
                     const goto: i16 = goto_table[goto_index[state]][produces];
                     if (goto > 0) {
-                        if(consumes > 0) {
-                            warn("\n");
-                            self.printStack();
-                        }
+                        // if(consumes > 0) {
+                        //     warn("\n");
+                        //     self.printStack();
+                        // }
                         self.state = goto;
                         continue :action_loop;
                     }
@@ -151,13 +171,17 @@ pub fn main() !void {
     var stream = file.inStream();
     const buffer = try stream.stream.readAllAlloc(allocator, 0x1000000);
 
+    var arena = try allocator.create(std.heap.ArenaAllocator);
+    arena.* = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    defer allocator.destroy(arena);
+
     var lexer = Lexer.init(buffer);
-    var parser = Parser.init(allocator, buffer);
+    var parser = Parser.init(allocator, &arena.allocator, buffer);
     defer parser.deinit();
 
     var tokens = std.ArrayList(Token).init(allocator);
     defer tokens.deinit();
-    try tokens.append(Token{ .start = 0, .end = 0, .id = .Newline });
     while (true) {
         var token = lexer.next();
         try tokens.append(token);
@@ -165,27 +189,17 @@ pub fn main() !void {
             break;
     }
     var i: usize = 0;
-    var line: usize = 0;
-    var last_newline = &tokens.items[0];
     while(i < tokens.len) : (i += 1) {
         const token = &tokens.items[i];
 
-        token.line = last_newline;
-        if(token.id == .Newline) {
-            line += 1;
-            token.start = line;
-            last_newline = token;
-            continue;
-        }
-
         if(!try parser.action(token.id, token)) {
-            std.debug.warn("\nline: {} => {}\n", line, token.id);
+            std.debug.warn("\nerror => {}\n", token.id);
             break;
         }
     }
-    warn("\n");
+    // warn("\n");
     const Root = @intToPtr(?*Variant, parser.stack.at(0).item) orelse return;
-    warn("\n");
     Root.dump(0);
+    warn("\n");
 }
 

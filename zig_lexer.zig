@@ -22,7 +22,7 @@ pub const Lexer = struct {
     valid: u8,
 
     pub fn init(source: []const u8) Lexer {
-        var peek: u8 = 255;
+        var peek: i32 = -1;
         if (source.len > 0) {
             peek = source[0];
         }
