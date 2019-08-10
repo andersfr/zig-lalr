@@ -13,6 +13,14 @@ pub async fn nextCodepointSlice(it: *Utf8Iterator) ?[]const u8 {
     async gfd.fds.*;
 }
 fn notype(arg1: type) {
-    const blagh;
+    const blagh = error{ fdsd; fds },
     blagh = if(true) if(dsa) dfs;
 }
+
+fn notype2(arg2: var);
+
+const s = struct {
+    fgg,
+    fds;
+    fgg,
+};

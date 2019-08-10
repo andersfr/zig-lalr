@@ -57,6 +57,13 @@ pub const Parser = struct {
         return &node.base;
     }
 
+    pub fn createRecoveryToken(self: *Self, token: *Token) !*Token {
+        const recovery_token = try self.allocator.create(Token);
+        recovery_token.* = token.*;
+        recovery_token.id = .Recovery;
+        return recovery_token;
+    }
+
     pub fn createTemporary(self: *Self, comptime T: type) !*T {
         const node = try self.allocator.create(T);
         // Allocator memsets to 0xaa but we rely on structs being zero-initialized
@@ -153,7 +160,7 @@ pub const Parser = struct {
         return false;
     }
 
-    fn recovery(self: *Self, token_id: Id, token: *Token, index: *usize) !?Id {
+    fn recovery(self: *Self, token_id: Id, token: *Token, index: *usize) !bool {
         const top = self.stack.len-1;
         const items = self.stack.items;
 
@@ -168,18 +175,60 @@ pub const Parser = struct {
                                     proto.body_node = return_type;
                                     proto.return_type.Explicit = try self.createRecoveryNode(return_type.unsafe_cast(Node.Block).lbrace);
                                     index.* -= 1;
-                                    return Id.Semicolon;
+                                    return self.action(Id.Semicolon, token);
                                 }
                             },
                             else => {}
                         }
                     }
                 }
+                else if(id == .MaybeLinkSection and token_id == .Semicolon) {
+                    const recovery_token = try self.createRecoveryToken(token);
+                    index.* -= 1;
+                    return try self.action(Id.Recovery, recovery_token);
+                }
             },
-            else => {}
+            .Token => |id| {}
+        }
+        if(token_id == .Semicolon) {
+            switch(items[top].value) {
+                .Terminal => |id| {
+                    // Recovers a{expr; ...} and error{expr; ...}
+                    if(id == .MaybeComma) {
+                        const state = @bitCast(u16, items[top-1].state);
+                        const produces = @enumToInt(items[top-1].value.Terminal);
+                        self.state = goto_table[goto_index[state]][produces];
+                        self.stack.len -= 1;
+                        return try self.action(Id.Comma, token);
+                    }
+                    // Recovers ContainerField;
+                    else if(id == .MaybeContainerMembers) {
+                        // Search for a state that produces MaybeContainerMembers and consumes exactly 1 argument
+                        // Note: MaybeContainerMembers <- ContainerMembers .
+                        var i: usize = 0;
+                        for(reduce_table) |r| {
+                            // Could be a compile time constant but it is one of the top most entries
+                            if(r.len > 0) {
+                                const r1 = @bitCast(u16, r[1]);
+                                if(produces_table[r1] == @enumToInt(TerminalId.MaybeContainerMembers) and consumes_table[r1] == 1) {
+                                    self.state = @bitCast(i16, @truncate(u16, i));
+                                    return true;
+                                }
+                            }
+                            i += 1;
+                        }
+                        return false;
+                    }
+                },
+                else => {}
+            }
+        }
+        else if(token_id == .Comma) {
+            if(try self.action(Id.Semicolon, token))
+                return true;
         }
 
-        return null;
+        return false;
     }
 };
 
@@ -232,10 +281,8 @@ pub fn main() !void {
         if(token.id == .LineComment) continue;
 
         if(!try parser.action(token.id, token)) {
-            if(try parser.recovery(token.id, token, &i)) |recovery_token| {
-                _ = try parser.action(recovery_token, token);
+            if(try parser.recovery(token.id, token, &i))
                 continue;
-            }
             std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
         }
