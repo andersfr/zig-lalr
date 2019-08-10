@@ -290,7 +290,7 @@ fn writeGrammar(grammar: Grammar) !void {
 
         try out.stream.write("pub fn terminalIdToString(id: TerminalId) []const u8 {\n");
         try out.stream.write("    switch(id) {\n");
-        try out.stream.write((" " ** 8) ++ ".Accept => return \"$accept\",");
+        try out.stream.write((" " ** 8) ++ ".Accept => return \"$accept\",\n");
         git = grammar.names_index_map.lookup.iterator();
         while(git.next()) |kv| {
             if(0 < kv.value and kv.value < grammar.epsilon_index) {
@@ -582,33 +582,37 @@ fn writeGrammar(grammar: Grammar) !void {
 }
 
 pub fn main() !void {
-    var file = try std.fs.File.openRead("ziglang.zig");
-    defer file.close();
+    var args = std.process.ArgIterator.init();
+    _ = args.nextPosix();
+    if(args.nextPosix()) |arg| {
+        var file = try std.fs.File.openRead(arg);
+        defer file.close();
 
-    var stream = file.inStream();
-    const buffer = try stream.stream.readAllAlloc(default_heap, 0x1000000);
-    defer default_heap.free(buffer);
+        var stream = file.inStream();
+        const buffer = try stream.stream.readAllAlloc(default_heap, 0x1000000);
+        defer default_heap.free(buffer);
 
-    var tree = try std.zig.parse(default_heap, buffer);
-    defer tree.deinit();
+        var tree = try std.zig.parse(default_heap, buffer);
+        defer tree.deinit();
 
-    // warn("Parsed {}\n", tree.root_node.decls.len);
+        // warn("Parsed {}\n", tree.root_node.decls.len);
 
-    var it = tree.root_node.decls.iterator(0);
-    while (it.next()) |decl| {
-        if (decl.*.cast(Node.VarDecl)) |vardecl| {
-            if (vardecl.lib_name) |lib| {
-                if (lib.*.cast(Node.StringLiteral)) |lib_str| {
-                    const name = tree.tokens.at(lib_str.token);
-                    if (std.mem.compare(u8, buffer[name.start..name.end], "\"LALR\""[0..]) != .Equal)
-                        continue;
-                    if (vardecl.init_node) |init| {
-                        if (init.*.cast(Node.ContainerDecl)) |container| {
-                            const grammar_name = tree.tokens.at(vardecl.name_token);
-                            var grammar = try parseGrammar(buffer[grammar_name.start..grammar_name.end], tree, buffer, container);
-                            defer grammar.deinit();
+        var it = tree.root_node.decls.iterator(0);
+        while (it.next()) |decl| {
+            if (decl.*.cast(Node.VarDecl)) |vardecl| {
+                if (vardecl.lib_name) |lib| {
+                    if (lib.*.cast(Node.StringLiteral)) |lib_str| {
+                        const name = tree.tokens.at(lib_str.token);
+                        if (std.mem.compare(u8, buffer[name.start..name.end], "\"LALR\""[0..]) != .Equal)
+                            continue;
+                        if (vardecl.init_node) |init| {
+                            if (init.*.cast(Node.ContainerDecl)) |container| {
+                                const grammar_name = tree.tokens.at(vardecl.name_token);
+                                var grammar = try parseGrammar(buffer[grammar_name.start..grammar_name.end], tree, buffer, container);
+                                defer grammar.deinit();
 
-                            try writeGrammar(grammar);
+                                try writeGrammar(grammar);
+                            }
                         }
                     }
                 }

@@ -91,6 +91,7 @@ pub extern "LALR" const zig_grammar = struct {
         },
         right: enum {
             // x{} initializer
+            LCurly,
             LBrace,
             // x.* x.?
             PeriodAsterisk,
@@ -325,7 +326,6 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .Explicit = arg9 };
         result = node;
-        parser.expect_return_type = false;
     }
     fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), Expr: *Node) *Node.FnProto {
         const node = try parser.createNode(Node.FnProto);
@@ -337,7 +337,6 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = arg10 };
         result = node;
-        parser.expect_return_type = false;
     }
     fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Keyword_var: *Token) *Node.FnProto {
         const vnode = try parser.createNode(Node.VarType);
@@ -351,7 +350,6 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .Explicit = &vnode.base };
         result = node;
-        parser.expect_return_type = false;
     }
     fn FnProto(MaybeFnCC: ?*Token, Keyword_fn: *Token, MaybeIdentifier: ?*Token, LParen: Precedence_none(*Token), MaybeParamDeclList: ?*NodeList, RParen: *Token, MaybeByteAlign: ?*Node, MaybeLinkSection: ?*Node, Bang: Precedence_none(*Token), Keyword_var: *Token) *Node.FnProto {
         const vnode = try parser.createNode(Node.VarType);
@@ -365,7 +363,6 @@ pub extern "LALR" const zig_grammar = struct {
         node.section_expr = arg8;
         node.return_type = Node.FnProto.ReturnType{ .InferErrorSet = &vnode.base };
         result = node;
-        parser.expect_return_type = false;
     }
 
     fn AsyncPrefix(Keyword_async: *Token) *Node.AsyncAttribute {
@@ -1056,7 +1053,7 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Initializer list
-    fn Expr(Expr: *Node, LBrace: *Token, InitList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
+    fn Expr(Expr: *Node, LCurly: *Token, InitList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
         const node = try parser.createNode(Node.SuffixOp);
         node.lhs = arg1;
         node.op = init: {
@@ -1230,14 +1227,14 @@ pub extern "LALR" const zig_grammar = struct {
         infix.rhs = &name.base;
         result = &infix.base;
     }
-    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), RBrace: *Token) *Node {
+    fn Expr(Keyword_error: *Token, LCurly: Precedence_none(*Token), RBrace: *Token) *Node {
         const error_set = try parser.createNode(Node.ErrorSetDecl);
         error_set.error_token = arg1;
         error_set.decls = NodeList.init(parser.allocator);
         error_set.rbrace_token = arg3;
         result = &error_set.base;
     }
-    fn Expr(Keyword_error: *Token, LBrace: Precedence_none(*Token), ErrorTagList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
+    fn Expr(Keyword_error: *Token, LCurly: Precedence_none(*Token), ErrorTagList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
         const error_set = try parser.createNode(Node.ErrorSetDecl);
         error_set.error_token = arg1;
         error_set.decls = arg3.*;
@@ -1278,7 +1275,7 @@ pub extern "LALR" const zig_grammar = struct {
         result = &arg1.base;
         arg1.body = arg2;
     }
-    fn Expr(IfPrefix: *Node.If, Expr: *Node, Keyword_else: *Token, MaybePayload: *Node, Expr: *Node) *Node {
+    fn Expr(IfPrefix: *Node.If, Expr: *Node, Keyword_else: *Token, MaybePayload: ?*Node, Expr: *Node) *Node {
         result = &arg1.base;
         const node = try parser.createNode(Node.Else);
         node.else_token = arg3;

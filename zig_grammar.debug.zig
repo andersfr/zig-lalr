@@ -28,6 +28,7 @@ pub fn idToString(id: Id) []const u8 {
         .AngleBracketAngleBracketLeft       => return "<<",
         .AngleBracketAngleBracketLeftEqual  => return "<<=",
         .AngleBracketLeftEqual              => return "<=",
+        .LCurly                             => return "{",
         .LBrace                             => return "{",
         .LBracket                           => return "[",
         .LParen                             => return "(",

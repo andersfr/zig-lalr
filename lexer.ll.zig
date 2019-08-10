@@ -29,7 +29,6 @@
 // %token AngleBracketAngleBracketLeft       %dfa <<
 // %token AngleBracketAngleBracketLeftEqual  %dfa <<=
 // %token AngleBracketLeftEqual              %dfa <=
-// %token LBrace                             %dfa {
 // %token LBracket                           %dfa \[
 // %token LParen                             %dfa \(
 // %token Minus                              %dfa -
@@ -114,6 +113,8 @@
 // %token Keyword_volatile                   %dfa volatile
 // %token Keyword_while                      %dfa while
 
+// %missing LBrace
+// %missing LCurly
 // %missing LineComment
 // %missing DocComment
 // %missing MultilineStringLiteral
@@ -128,6 +129,17 @@
 // %token Identifier                         %dfa [A-Za-z_]([A-Za-z0-9_]*)
 // %token Identifier                         %dfa @"[A-Za-z_]([A-Za-z0-9_]*)"
 // %token Builtin                            %dfa @[A-Za-z_]([A-Za-z0-9_]*)
+
+// LBrace
+// %dfa {
+{
+    if(self.index == 1) return Id.LBrace;
+    switch(self.source[self.index-2]) {
+        ' ', '\t', '\r', '\n' =>  return Id.LBrace,
+        else => return Id.LCurly,
+    }
+}
+// %end
 
 // Space
 // %dfa ( )+

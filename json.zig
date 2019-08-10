@@ -1,12 +1,12 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
-const idToString = @import("zig_grammar.debug.zig").idToString;
-const Lexer = @import("zig_lexer.zig").Lexer;
-const Types = @import("zig_grammar.types.zig");
-const Tokens = @import("zig_grammar.tokens.zig");
-const Actions = @import("zig_grammar.actions.zig");
-const Transitions = @import("zig_grammar.tables.zig");
+const idToString = @import("json_grammar.debug.zig").idToString;
+const Lexer = @import("json_lexer.zig").Lexer;
+const Types = @import("json_grammar.types.zig");
+const Tokens = @import("json_grammar.tokens.zig");
+const Actions = @import("json_grammar.actions.zig");
+const Transitions = @import("json_grammar.tables.zig");
 
 usingnamespace Types;
 usingnamespace Tokens;
@@ -40,42 +40,12 @@ pub const Parser = struct {
 
     pub const Stack = std.ArrayList(StackItem);
 
-    pub fn createNode(self: *Self, comptime T: type) !*T {
-        const node = try self.allocator.create(T);
+    pub fn createVariant(self: *Self, comptime T: type) !*T {
+        const variant = try self.allocator.create(T);
         // Allocator memsets to 0xaa but we rely on structs being zero-initialized
         @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
-        node.base.id = Node.typeToId(T);
-        return node;
-    }
-
-    pub fn createRecoveryNode(self: *Self, token: *Token) !*Node {
-        const node = try self.allocator.create(Node.Recovery);
-        // Allocator memsets to 0xaa but we rely on structs being zero-initialized
-        @memset(@ptrCast([*]align(@alignOf(Node.Recovery)) u8, node), 0, @sizeOf(Node.Recovery));
-        node.base.id = Node.typeToId(Node.Recovery);
-        node.token = token;
-        return &node.base;
-    }
-
-    pub fn createTemporary(self: *Self, comptime T: type) !*T {
-        const node = try self.allocator.create(T);
-        // Allocator memsets to 0xaa but we rely on structs being zero-initialized
-        @memset(@ptrCast([*]align(@alignOf(T)) u8, node), 0, @sizeOf(T));
-        return node;
-    }
-
-    pub fn createListWithNode(self: *Self, comptime T: type, node: *Node) !*T {
-        const list = try self.allocator.create(T);
-        list.* = T.init(self.allocator);
-        try list.append(node);
-        return list;
-    }
-
-    pub fn createListWithToken(self: *Self, comptime T: type, token: *Token) !*T {
-        const list = try self.allocator.create(T);
-        list.* = T.init(self.allocator);
-        try list.append(token);
-        return list;
+        variant.base.id = Variant.typeToId(T);
+        return variant;
     }
 
     pub fn action(self: *Self, token_id: Id, token: *Token) !bool {
@@ -143,7 +113,7 @@ pub const Parser = struct {
         if(self.stack.len == 1 and token_id == .Eof) {
             switch(self.stack.at(0).value) {
                 .Terminal => |terminal_id| {
-                    if(terminal_id == .Root)
+                    if(terminal_id == .Object)
                         return true;
                 },
                 else => {}
@@ -151,35 +121,6 @@ pub const Parser = struct {
         }
 
         return false;
-    }
-
-    fn recovery(self: *Self, token_id: Id, token: *Token, index: *usize) !?Id {
-        const top = self.stack.len-1;
-        const items = self.stack.items;
-
-        switch(items[top].value) {
-            .Terminal => |id| {
-                // Missing function return type (body block is in return type)
-                if(id == .FnProto) {
-                    if(@intToPtr(*Node, items[top].item).cast(Node.FnProto)) |proto| {
-                        switch(proto.return_type) {
-                            .Explicit => |return_type| {
-                                if(return_type.id == .Block) {
-                                    proto.body_node = return_type;
-                                    proto.return_type.Explicit = try self.createRecoveryNode(return_type.unsafe_cast(Node.Block).lbrace);
-                                    index.* -= 1;
-                                    return Id.Semicolon;
-                                }
-                            },
-                            else => {}
-                        }
-                    }
-                }
-            },
-            else => {}
-        }
-
-        return null;
     }
 };
 
@@ -189,7 +130,7 @@ pub fn main() !void {
     var args = std.process.args();
     if(!args.skip()) return;
 
-    const filename = if(args.next(allocator)) |arg1| try arg1 else "example.zig"[0..];
+    const filename = if(args.next(allocator)) |arg1| try arg1 else "lsp.json"[0..];
 
     var file = try std.fs.File.openRead(filename);
     defer file.close();
@@ -210,13 +151,7 @@ pub fn main() !void {
         if(token.id == .Eof)
             break;
     }
-    const shebang = if(tokens.items[1].id == .ShebangLine) @intCast(usize, 1) else @intCast(usize, 0);
-    var i: usize = shebang + 1;
-    // If file starts with a DocComment this is considered a RootComment
-    while(i < tokens.len) : (i += 1) {
-        tokens.items[i].id = if(tokens.items[i].id == .DocComment) .RootDocComment else break;
-    }
-    i = shebang;
+    var i: usize = 0;
     var line: usize = 0;
     var last_newline = &tokens.items[0];
     while(i < tokens.len) : (i += 1) {
@@ -229,21 +164,15 @@ pub fn main() !void {
             last_newline = token;
             continue;
         }
-        if(token.id == .LineComment) continue;
 
         if(!try parser.action(token.id, token)) {
-            if(try parser.recovery(token.id, token, &i)) |recovery_token| {
-                _ = try parser.action(recovery_token, token);
-                continue;
-            }
             std.debug.warn("\nline: {} => {}\n", line, token.id);
             break;
         }
     }
     warn("\n");
-    const Root = @intToPtr(?*Node.Root, parser.stack.at(0).item) orelse return;
-    Root.eof_token = &tokens.items[tokens.len-1];
+    const Root = @intToPtr(?*Variant, parser.stack.at(0).item) orelse return;
     warn("\n");
-    Root.base.dump(0);
+    Root.dump(0);
 }
 
