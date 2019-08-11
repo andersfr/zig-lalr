@@ -1,6 +1,11 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
+const stack_trace_enabled = false;
+
+fn stack_trace_none(fmt: []const u8, va_args: ...) void {}
+const stack_trace = comptime if(stack_trace_enabled) std.debug.warn else stack_trace_none;
+
 const idToString = @import("zig_grammar.debug.zig").idToString;
 const Lexer = @import("zig_lexer.zig").Lexer;
 const Types = @import("zig_grammar.types.zig");
@@ -27,11 +32,13 @@ pub const Parser = struct {
     }
 
     fn printStack(self: *const Self) void {
-        var it = self.stack.iterator();
-        while(it.next()) |item| {
-            switch(item.value) {
-                .Token => |id| { warn("{} ", idToString(id)); },
-                .Terminal => |id| { if(item.item != 0) { warn("{} ", terminalIdToString(id)); } },
+        if(stack_trace_enabled) {
+            var it = self.stack.iterator();
+            while(it.next()) |item| {
+                switch(item.value) {
+                    .Token => |id| { stack_trace("{} ", idToString(id)); },
+                    .Terminal => |id| { if(item.item != 0) { stack_trace("{} ", terminalIdToString(id)); } },
+                }
             }
         }
     }
@@ -100,14 +107,14 @@ pub const Parser = struct {
             // Check that more tokens are available
             if(ptr[0].id == .Newline) {
                 // Look at indentation and make a guess
-                const next_line_offset = ptr[1].start - ptr[0].end;
+                const next_line_offset = if(ptr[1].id == .Newline) @intCast(usize, 0) else ptr[1].start - ptr[0].end;
                 const own_line = @ptrCast([*]Token, token.line);
                 const own_line_offset =  own_line[1].start - own_line[0].end;
                 if(own_line_offset > next_line_offset) {
                     return true;
                 }
                 else if(ptr[1].id != close_token_id and own_line_offset == next_line_offset) {
-                    // TODO: workaround for zig fmt bug
+                    // TODO: This is workaround for zig fmt bug; expensive and should be removed
                     var i = self.stack.items.len-1;
                     while(i > 0) : (i -= 1) {
                         switch(self.stack.items[i].value) {
@@ -171,7 +178,7 @@ pub const Parser = struct {
                         },
                         else => {}
                     }
-                    warn("{} ", idToString(token.id));
+                    stack_trace("{} ", idToString(token.id));
                     try self.stack.append(StackItem{ .item = @ptrToInt(token), .state = self.state, .value = StackValue{ .Token = token_id } });
                     self.state = shift;
                     return ActionResult.Ok;
@@ -199,7 +206,7 @@ pub const Parser = struct {
                     const goto: i16 = goto_table[goto_index[state]][produces];
                     if (goto > 0) {
                         if(consumes > 0) {
-                            warn("\n");
+                            stack_trace("\n");
                             self.printStack();
                         }
                         self.state = goto;
@@ -397,7 +404,7 @@ pub fn main() !void {
         }
 
         // Incomplete line
-        warn("\n");
+        stack_trace("\n");
         if(parser.resync()) {
             parser.printStack();
             const current_line = token.line;
@@ -409,13 +416,16 @@ pub fn main() !void {
         }
 
         // Give up
-        std.debug.warn("\nline: {} => {}\n", line, token.id);
-        return;
+        warn("\nFailed on line: {} => {}\n", line, token.id);
+        break :parser_loop;
     }
-    warn("\n");
-    const Root = @intToPtr(?*Node.Root, parser.stack.at(0).item) orelse return;
-    Root.eof_token = &tokens.items[tokens.len-1];
-    warn("\n");
-    Root.base.dump(0);
+    stack_trace("\n");
+    if(parser.stack.len > 0) {
+        const Root = @intToPtr(?*Node.Root, parser.stack.at(0).item) orelse return;
+        Root.eof_token = &tokens.items[tokens.len-1];
+        // stack_trace("\n");
+        // Root.base.dump(0);
+        warn("Success\n");
+    }
 }
 
