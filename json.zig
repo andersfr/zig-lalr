@@ -8,12 +8,13 @@ const Tokens = @import("json_grammar.tokens.zig");
 const Actions = @import("json_grammar.actions.zig");
 const Transitions = @import("json_grammar.tables.zig");
 
-usingnamespace Types;
 usingnamespace Tokens;
 usingnamespace Actions;
 usingnamespace Transitions;
 
-pub const Parser = struct {
+pub usingnamespace Types;
+
+const Parser = struct {
     state: i16 = 0,
     stack: Stack,
     source: []const u8,
@@ -157,49 +158,71 @@ pub const Parser = struct {
     }
 };
 
-pub fn main() !void {
-    var allocator = std.heap.c_allocator;
+pub const Json = struct {
+    arena: *std.heap.ArenaAllocator,
+    allocator: *std.mem.Allocator,
+    root: *Variant.Object,
 
-    var args = std.process.args();
-    if(!args.skip()) return;
-
-    const filename = if(args.next(allocator)) |arg1| try arg1 else "lsp.json"[0..];
-
-    var file = try std.fs.File.openRead(filename);
-    defer file.close();
-
-    var stream = file.inStream();
-    const buffer = try stream.stream.readAllAlloc(allocator, 0x1000000);
-
-    var arena = try allocator.create(std.heap.ArenaAllocator);
-    arena.* = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit();
-    defer allocator.destroy(arena);
-
-    var lexer = Lexer.init(buffer);
-    var parser = Parser.init(allocator, &arena.allocator, buffer);
-    defer parser.deinit();
-
-    var tokens = std.ArrayList(Token).init(allocator);
-    defer tokens.deinit();
-    while (true) {
-        var token = lexer.next();
-        try tokens.append(token);
-        if(token.id == .Eof)
-            break;
+    pub fn init(allocator: *std.mem.Allocator) !Json {
+        var arena = try allocator.create(std.heap.ArenaAllocator);
+        arena.* = std.heap.ArenaAllocator.init(allocator);
+        return Json{ .arena = arena, .allocator = allocator, .root = try emptyRoot(&arena.allocator) };
     }
-    var i: usize = 0;
-    while(i < tokens.len) : (i += 1) {
-        const token = &tokens.items[i];
 
-        if(!try parser.action(token.id, token)) {
-            std.debug.warn("\nerror => {}\n", token.id);
-            break;
+    pub fn initWithString(allocator: *std.mem.Allocator, str: []const u8) !?Json {
+        var arena = try allocator.create(std.heap.ArenaAllocator);
+        arena.* = std.heap.ArenaAllocator.init(allocator);
+        errdefer { arena.deinit(); allocator.destroy(arena); }
+
+        const maybe_root = try parse(allocator, &arena.allocator, str);
+        if(maybe_root) |root| {
+            return Json{ .arena = arena, .allocator = allocator, .root = root };
         }
+        arena.deinit();
+        allocator.destroy(arena);
+        return null;
     }
-    // warn("\n");
-    const Root = @intToPtr(?*Variant, parser.stack.at(0).item) orelse return;
-    Root.dump(0);
-    warn("\n");
-}
+
+    pub fn deinit(self: *Json) void {
+        self.arena.deinit();
+        self.allocator.destroy(self.arena);
+    }
+
+    pub fn emptyRoot(arena_allocator: *std.mem.Allocator) !*Variant.Object {
+        const variant = try arena_allocator.create(Variant.Object);
+        variant.base.id = .Object;
+        variant.fields = VariantMap.init(arena_allocator);
+        return variant;
+    }
+
+    fn parse(allocator: *std.mem.Allocator, arena_allocator: *std.mem.Allocator, str: []const u8) !?*Variant.Object {
+        var lexer = Lexer.init(str);
+        var parser = Parser.init(allocator, arena_allocator, str);
+        defer parser.deinit();
+
+        var tokens = std.ArrayList(Token).init(allocator);
+        defer tokens.deinit();
+        while (true) {
+            var token = lexer.next();
+            try tokens.append(token);
+            if(token.id == .Eof)
+                break;
+        }
+        var i: usize = 0;
+        while(i < tokens.len) : (i += 1) {
+            const token = &tokens.items[i];
+
+            if(!try parser.action(token.id, token)) {
+                // std.debug.warn("\nerror => {}\n", token.id);
+                return null;
+            }
+        }
+        if(parser.stack.len == 0)
+            return null;
+
+        const root = @intToPtr(?*Variant, parser.stack.at(0).item) orelse return null;
+
+        return root.cast(Variant.Object) orelse null;
+    }
+};
 

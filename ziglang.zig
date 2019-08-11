@@ -674,12 +674,12 @@ pub extern "LALR" const zig_grammar = struct {
                     suffix.op.Call.async_attr = arg1;
                 },
                 else => {
-                    // TODO: Error not a call
+                    try parser.reportError(ParseError.DetachedAsync, arg1.async_token);
                 }
             }
         }
         else {
-            // TODO: Error not a call
+            try parser.reportError(ParseError.DetachedAsync, arg1.async_token);
         }
     }
 

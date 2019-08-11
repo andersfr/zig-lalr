@@ -38,6 +38,8 @@ const s = struct {
             for(fsda) |Fdsa| { asdf, df
         }
 
+        async not_a_function[3];
+
         for(fds){
         }
 
