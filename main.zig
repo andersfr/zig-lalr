@@ -1,7 +1,7 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
-const stack_trace_enabled = false;
+const stack_trace_enabled = true;
 
 fn stack_trace_none(fmt: []const u8, va_args: ...) void {}
 const stack_trace = comptime if(stack_trace_enabled) std.debug.warn else stack_trace_none;
@@ -164,7 +164,7 @@ pub const Parser = struct {
                 if (shift > 0) {
                     // Unmatched {, [, ( must be detected early
                     switch(token.id) {
-                        .LBrace, .LCurly => {
+                        .LCurly, .LBrace => {
                             if(self.earlyDetectUnmatched(Id.LBrace, Id.RBrace, token))
                                 return ActionResult.IncompleteLine;
                         },
@@ -233,6 +233,8 @@ pub const Parser = struct {
         const top = self.stack.len-1;
         const items = self.stack.items;
 
+        // TODO: report errors
+
         switch(items[top].value) {
             .Terminal => |id| {
                 // Missing function return type (body block is in return type)
@@ -276,6 +278,10 @@ pub const Parser = struct {
                 else if(id == .ContainerField and token_id == .RBrace) {
                     index.* -= 1;
                     return try self.action(Id.Comma, token);
+                }
+                // Curly vs Brace confusion
+                else if((id == .IfPrefix or id == .WhilePrefix or id == .ForPrefix) and token_id == .LCurly) {
+                    return try self.action(Id.LBrace, token);
                 }
             },
             .Token => |id| {
@@ -323,6 +329,7 @@ pub const Parser = struct {
     }
 
     pub fn resync(self: *Self) bool {
+        // TODO: report error on resync
         while(self.stack.popOrNull()) |top| {
             switch(top.value) {
                 .Token => |id| {
@@ -382,6 +389,7 @@ pub fn main() !void {
     i = shebang;
     var line: usize = 0;
     var last_newline = &tokens.items[0];
+    var resync_progress: usize = 0;
     parser_loop: while(i < tokens.len) : (i += 1) {
         const token = &tokens.items[i];
 
@@ -393,6 +401,10 @@ pub fn main() !void {
             continue;
         }
         if(token.id == .LineComment) continue;
+        if(token.id == .Invalid) {
+            // TODO: report error
+            continue;
+        }
 
         const result = try parser.action(token.id, token);
         if(result == .Ok)
@@ -411,7 +423,10 @@ pub fn main() !void {
             if(result == .IncompleteLine) {
                 while(i < tokens.len and tokens.items[i].id != .Newline) : (i += 1) {}
             }
-            i -= 1;
+            if(resync_progress < i-1) {
+                i -= 1;
+            }
+            resync_progress = i;
             continue :parser_loop;
         }
 

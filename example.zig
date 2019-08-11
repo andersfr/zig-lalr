@@ -38,6 +38,9 @@ const s = struct {
             for(fsda) |Fdsa| { asdf, df
         }
 
+        for(fds){
+        }
+
         var v = []u8{ 0, 0
 
 
