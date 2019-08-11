@@ -1,7 +1,7 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
-const stack_trace_enabled = true;
+const stack_trace_enabled = false;
 
 fn stack_trace_none(fmt: []const u8, va_args: ...) void {}
 const stack_trace = comptime if(stack_trace_enabled) std.debug.warn else stack_trace_none;
@@ -128,7 +128,15 @@ pub const Parser = struct {
                                     return true;
                                 }
                             },
-                            else => {}
+                            .Token => |id| {
+                                if(id == .LBrace) {
+                                    const last_token = @intToPtr(*Token, self.stack.items[i].item);
+                                    const line_offset = last_token.start - last_token.line.?.end;
+                                    if(line_offset < own_line_offset)
+                                        return false;
+                                    return true;
+                                }
+                            }
                         }
                     }
                     return true;
