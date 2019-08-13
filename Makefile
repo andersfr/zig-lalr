@@ -3,8 +3,7 @@ MODE=--release-fast
 .PHONY: clean
 
 all: main jsonrpc
-	./jsonrpc < rpc.txt
-	#./main
+	# ./main
 
 run_main: main
 	zig run main.zig
@@ -15,7 +14,7 @@ run_json: jsonrpc
 main: lalr zig_grammar.actions.zig zig_grammar.types.zig main.zig zig_lexer.zig lexer.tab.zig
 	time zig build-exe --single-threaded ${MODE} main.zig
 
-jsonrpc: lalr json_grammar.actions.zig json_grammar.types.zig json.zig jsonrpc.zig json_lexer.zig
+jsonrpc: lalr json_grammar.actions.zig json_grammar.types.zig json.zig jsonrpc.zig json_lexer.zig zig_parser.zig
 	time zig build-exe --single-threaded ${MODE} jsonrpc.zig
 
 lalr: lalr.zig grammar.zig

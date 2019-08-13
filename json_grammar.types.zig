@@ -23,6 +23,26 @@ pub const Variant = struct {
         BoolLiteral,
     };
 
+    pub fn getByName(self: *Variant, name: []const u8) ?*Variant {
+        const obj = self.cast(Variant.Object) orelse return null;
+        return obj.getByName(name);
+    }
+
+    pub fn getString(self: *Variant) ?[]const u8 {
+        const obj = self.cast(Variant.StringLiteral) orelse return null;
+        return obj.value;
+    }
+
+    pub fn getInteger(self: *Variant) ?isize {
+        const obj = self.cast(Variant.IntegerLiteral) orelse return null;
+        return obj.value;
+    }
+
+    pub fn getBool(self: *Variant) ?bool {
+        const obj = self.cast(Variant.BoolLiteral) orelse return null;
+        return obj.value;
+    }
+
     pub fn cast(base: *Variant, comptime T: type) ?*T {
         if (base.id == comptime typeToId(T)) {
             return @fieldParentPtr(T, "base", base);
@@ -117,6 +137,11 @@ pub const Variant = struct {
     pub const Object = struct {
         base: Variant,
         fields: VariantMap,
+
+        pub fn getByName(self: *Variant.Object, name: []const u8) ?*Variant {
+            const kv = self.fields.find(name) orelse return null;
+            return kv.value;
+        }
     };
 
     pub const Array = struct {

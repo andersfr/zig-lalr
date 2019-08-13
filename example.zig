@@ -10,7 +10,7 @@ pub async fn nextCodepointSlice(it: *Utf8Iterator) ?[]const u8 {
         @setCold();
     }
 
-    async gfd.fds.*;
+    gfd.fds.*;
 }
 
 const s = struct {

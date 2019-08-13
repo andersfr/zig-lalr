@@ -62,7 +62,7 @@ const Parser = struct {
         const slice = self.source[token.start..token.end];
         var size = slice.len;
         var i: usize = 0;
-        while(i < size) : (i += 1) {
+        while(i < slice.len) : (i += 1) {
             if(slice[i] == '\\') {
                 size -= 1;
                 i += 1;
@@ -74,8 +74,16 @@ const Parser = struct {
         while(j < slice.len) : (j += 1) {
             if(slice[j] == '\\' or slice[j] == '\"') {
                 j += 1;
+                result[i] = switch(slice[j]) {
+                    't' => '\t',
+                    'r' => '\r',
+                    'n' => '\n',
+                    else => slice[j],
+                };
             }
-            result[i] = slice[j];
+            else {
+                result[i] = slice[j];
+            }
             i += 1;
         }
 
@@ -161,12 +169,63 @@ const Parser = struct {
 pub const Json = struct {
     arena: *std.heap.ArenaAllocator,
     allocator: *std.mem.Allocator,
-    root: *Variant.Object,
+    root: Element = Element{},
+
+    pub const Element = struct {
+        value: ?*Variant = null,
+
+        pub fn v(self: *const Element, key: []const u8) Element {
+            const none = Element{};
+            const vv = self.value orelse return none;
+            const vo = vv.cast(Variant.Object) orelse return none;
+            const kv = vo.fields.find(key) orelse return none;
+            return Element{ .value = kv.value };
+        }
+
+        pub fn a(self: *const Element) []*Variant {
+            const none = [0]*Variant{};
+            const vv = self.value orelse return none;
+            const va = vv.cast(Variant.Array) orelse return none;
+            return va.elements.items[0..va.elements.len];
+        }
+
+        pub fn at(self: *const Element, index: usize) Element {
+            const none = Element{};
+            const vv = self.value orelse return none;
+            const va = vv.cast(Variant.Array) orelse return none;
+            return if(va.elements.len > index) Element{ .value = va.elements.items[index] } else none;
+        }
+
+        pub fn s(self: *const Element, default: ?[]const u8) ?[]const u8 {
+            const vv = self.value orelse return default;
+            const vs = vv.cast(Variant.StringLiteral) orelse return default;
+            return vs.value;
+        }
+
+        pub fn i(self: *const Element, default: ?i64) ?i64 {
+            const vv = self.value orelse return default;
+            const vi = vv.cast(Variant.IntegerLiteral) orelse return default;
+            return vi.value;
+        }
+
+        pub fn u(self: *const Element, default: ?u64) ?u64 {
+            const vu = self.i(null);
+            if(vu) |vv|
+                return @bitCast(u64, vv);
+            return default;
+        }
+
+        pub fn b(self: *const Element, default: ?bool) ?bool {
+            const vv = self.value orelse return default;
+            const vb = vv.cast(Variant.BoolLiteral) orelse return default;
+            return vb.value;
+        }
+    };
 
     pub fn init(allocator: *std.mem.Allocator) !Json {
         var arena = try allocator.create(std.heap.ArenaAllocator);
         arena.* = std.heap.ArenaAllocator.init(allocator);
-        return Json{ .arena = arena, .allocator = allocator, .root = try emptyRoot(&arena.allocator) };
+        return Json{ .arena = arena, .allocator = allocator };
     }
 
     pub fn initWithString(allocator: *std.mem.Allocator, str: []const u8) !?Json {
@@ -176,7 +235,7 @@ pub const Json = struct {
 
         const maybe_root = try parse(allocator, &arena.allocator, str);
         if(maybe_root) |root| {
-            return Json{ .arena = arena, .allocator = allocator, .root = root };
+            return Json{ .arena = arena, .allocator = allocator, .root = Element{ .value = &root.base } };
         }
         arena.deinit();
         allocator.destroy(arena);
@@ -186,13 +245,6 @@ pub const Json = struct {
     pub fn deinit(self: *Json) void {
         self.arena.deinit();
         self.allocator.destroy(self.arena);
-    }
-
-    pub fn emptyRoot(arena_allocator: *std.mem.Allocator) !*Variant.Object {
-        const variant = try arena_allocator.create(Variant.Object);
-        variant.base.id = .Object;
-        variant.fields = VariantMap.init(arena_allocator);
-        return variant;
     }
 
     fn parse(allocator: *std.mem.Allocator, arena_allocator: *std.mem.Allocator, str: []const u8) !?*Variant.Object {
