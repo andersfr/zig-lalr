@@ -216,8 +216,7 @@ fn processJsonRpc(jsonrpc: Json) !bool {
     else if(std.mem.compare(u8, "shutdown", rpc_method) == .Equal) {
         // Request
         // params: void
-        // return try sendGenericRpcResponse(rpc_id, null_result_response);
-        return false;
+        return try sendGenericRpcResponse(rpc_id, null_result_response);
     }
     else if(std.mem.compare(u8, "exit", rpc_method) == .Equal) {
         // Notification
