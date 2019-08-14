@@ -48,6 +48,10 @@ pub extern "LALR" const json_grammar = struct {
         variant.value = try parser.unescapeTokenString(arg1);
         result = &variant.base;
     }
+    fn Element(Keyword_null: *Token) *Variant {
+        const variant = try parser.createVariant(Variant.NullLiteral);
+        result = &variant.base;
+    }
     fn Element(Keyword_true: *Token) *Variant {
         const variant = try parser.createVariant(Variant.BoolLiteral);
         variant.value = true;

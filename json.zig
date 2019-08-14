@@ -174,6 +174,12 @@ pub const Json = struct {
     pub const Element = struct {
         value: ?*Variant = null,
 
+        pub fn dump(self: *const Element) void {
+            const none = Element{};
+            const vv = self.value orelse return;
+            vv.dump(0);
+        }
+
         pub fn v(self: *const Element, key: []const u8) Element {
             const none = Element{};
             const vv = self.value orelse return none;
@@ -219,6 +225,12 @@ pub const Json = struct {
             const vv = self.value orelse return default;
             const vb = vv.cast(Variant.BoolLiteral) orelse return default;
             return vb.value;
+        }
+
+        pub fn isNull(self: *const Element) bool {
+            const vv = self.value orelse return false;
+            const vn = vv.cast(Variant.NullLiteral) orelse return false;
+            return true;
         }
     };
 

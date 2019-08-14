@@ -15,7 +15,7 @@ pub async fn nextCodepointSlice(it: *Utf8Iterator) ?[]const u8 {
 }
 
 const s = struct {
-};
+}
 
 fn notype(arg1: type) {
     const blagh = error{ fdsd, fds },

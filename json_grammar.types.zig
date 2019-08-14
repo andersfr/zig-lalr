@@ -21,6 +21,7 @@ pub const Variant = struct {
         IntegerLiteral,
         StringLiteral,
         BoolLiteral,
+        NullLiteral,
     };
 
     pub fn getByName(self: *Variant, name: []const u8) ?*Variant {
@@ -72,6 +73,9 @@ pub const Variant = struct {
 
     pub fn dump(self: *Variant, indent: usize) void {
         switch(self.id) {
+            .NullLiteral => {
+                warn("null");
+            },
             .BoolLiteral => {
                 if(self.unsafe_cast(Variant.BoolLiteral).value) warn("true") else warn("false");
             },
@@ -162,6 +166,10 @@ pub const Variant = struct {
     pub const BoolLiteral = struct {
         base: Variant,
         value: bool,
+    };
+
+    pub const NullLiteral = struct {
+        base: Variant,
     };
 };
 

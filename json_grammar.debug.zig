@@ -10,6 +10,7 @@ pub fn idToString(id: Id) []const u8 {
         .RBracket                           => return "]",
         .Keyword_false                      => return "false",
         .Keyword_true                       => return "true",
+        .Keyword_null                       => return "null",
 
         .Invalid                            => return "$invalid",
         .Eof                                => return "$eof",

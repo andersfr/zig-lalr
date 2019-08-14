@@ -7,7 +7,6 @@ const ZigNode = @import("zig_parser.zig").Node;
 usingnamespace @import("json.zig");
 
 const allocator = std.heap.c_allocator;
-const memmove = std.mem.copy; // This is implemented as memmove so it is safe (for now)
 
 var stdout_file: std.fs.File = undefined;
 var stdout: std.fs.File.OutStream = undefined;
@@ -18,6 +17,21 @@ const initialize_response =
     ;
 const error_response =
     \\,"jsonrpc":"2.0","error":{"code":-32601,"message":"NotImplemented"}}
+    ;
+const null_result_response =
+    \\,"jsonrpc":"2.0","result":null}
+    ;
+const empty_result_response =
+    \\,"jsonrpc":"2.0","result":{}}
+    ;
+const empty_array_response =
+    \\,"jsonrpc":"2.0","result":[]}
+    ;
+const edit_not_applied_response =
+    \\,"jsonrpc":"2.0","result":{"applied":false,"failureReason":"feature not implemented"}}
+    ;
+const no_completions_response =
+    \\,"jsonrpc":"2.0","result":{"isIncomplete":false,"items":[]}}
     ;
 
 fn processSource(uri: []const u8, version: usize, source: []const u8) !void {
@@ -71,6 +85,19 @@ fn processSource(uri: []const u8, version: usize, source: []const u8) !void {
     }
 }
 
+fn sendGenericRpcResponse(rpc_id: usize, response: []const u8) !bool {
+    const rpc_id_digits = blk: {
+        if(rpc_id == 0) break :blk 1;
+        var digits: usize = 1;
+        var value = rpc_id / 10;
+        while(value != 0) : (value /= 10) { digits += 1; }
+        break :blk digits;
+    };
+    try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", response.len+rpc_id_digits+6, "{", rpc_id);
+    try stdout.stream.write(response);
+    return true;
+}
+
 fn processJsonRpc(jsonrpc: Json) !bool {
     const root = jsonrpc.root;
 
@@ -84,14 +111,8 @@ fn processJsonRpc(jsonrpc: Json) !bool {
     const rpc_method = root.v("method").s("").?;
 
     // Get ID
-    const rpc_id = root.v("id").u(0).?;
-    const rpc_id_digits = blk: {
-        if(rpc_id == 0) break :blk 1;
-        var digits: usize = 1;
-        var value = rpc_id / 10;
-        while(value != 0) : (value /= 10) { digits += 1; }
-        break :blk digits;
-    };
+    const rpc_maybe_id = root.v("id").u(null);
+    const rpc_id = rpc_maybe_id orelse 0;
 
     // Get Params
     const rpc_params = root.v("params");
@@ -100,6 +121,7 @@ fn processJsonRpc(jsonrpc: Json) !bool {
 
     // Process some methods
     if(std.mem.compare(u8, "textDocument/didOpen", rpc_method) == .Equal) {
+        // Notification
         // textDocument: TextDocumentItem{ uri: string, languageId: string, version: number, text: string }
         const document = rpc_params.v("textDocument");
         const uri = document.v("uri").s("").?;
@@ -108,8 +130,10 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         const text = document.v("text").s("").?;
 
         try processSource(uri, version, text);
+        return true;
     }
     else if(std.mem.compare(u8, "textDocument/didChange", rpc_method) == .Equal) {
+        // Notification
         // textDocument: VersionedTextDocumentIdentifier{ uri: string, version: number|null }
         // contentChanges[ { range?: { start: Position{ line: number, character:number }, end: Position{} }, rangeLength?: number, text: string } ]
         const document = rpc_params.v("textDocument");
@@ -120,18 +144,24 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         const text = change.v("text").s("").?;
 
         try processSource(uri, version, text);
+        return true;
     }
     else if(std.mem.compare(u8, "textDocument/didSave", rpc_method) == .Equal) {
+        // Notification
         // textDocument: TextDocumentIdentifier{ uri: string }
         // text?: string
         const uri = rpc_params.v("textDocument").v("uri").s("").?;
         const text = rpc_params.v("text").s("").?;
 
         // try processSource(uri, 0, text);
+        return true;
     }
     else if(std.mem.compare(u8, "textDocument/didClose", rpc_method) == .Equal) {
+        // Notification
         // textDocument: TextDocumentIdentifier{ uri: string }
         const uri = rpc_params.v("textDocument").v("uri").s("").?;
+
+        return true;
     }
     else if(std.mem.compare(u8, "textDocument/completion", rpc_method) == .Equal) {
         // textDocument: TextDocumentIdentifier{ uri: string }
@@ -147,16 +177,28 @@ fn processJsonRpc(jsonrpc: Json) !bool {
             const character = @bitCast(u64, icharacter);
             // try debug.stream.print("completion [{}] {}:{}\n", uri, line+1, character+1);
         }
+        return try sendGenericRpcResponse(rpc_id, no_completions_response);
+    }
+    else if(std.mem.compare(u8, "textDocument/signatureHelp", rpc_method) == .Equal) {
+        // Request
+        // textDocument: TextDocumentIdentifier{ uri: string }
+        // position: Position{ line: number, character:number }
+        return try sendGenericRpcResponse(rpc_id, empty_array_response);
     }
     else if(std.mem.compare(u8, "textDocument/willSave", rpc_method) == .Equal) {
+        // Notification
         // textDocument: TextDocumentIdentifier{ uri: string }
         // reason: number (Manual=1, AfterDelay=2, FocusOut=3)
+        return true;
     }
     else if(std.mem.compare(u8, "textDocument/willSaveWaitUntil", rpc_method) == .Equal) {
+        // Request
         // textDocument: TextDocumentIdentifier{ uri: string }
         // reason: number (Manual=1, AfterDelay=2, FocusOut=3)
+        return try sendGenericRpcResponse(rpc_id, empty_array_response);
     }
     else if(std.mem.compare(u8, "initialize", rpc_method) == .Equal) {
+        // Request
         // processId: number|null
         // rootPath?: string|null (deprecated)
         // rootUri: DocumentUri{} | null
@@ -164,38 +206,55 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         // capabilities: ClientCapabilities{ ... }
         // trace: 'off'|'messages'|'verbose' (defaults to off)
         // workspaceFolders: WorkspaceFolder[]|null
-        try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", initialize_response.len+rpc_id_digits+6, "{", rpc_id);
-        try stdout.stream.write(initialize_response);
-
-        // try debug.stream.write("<--\n");
-        // try debug.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", initialize_response.len+digits+6, "{", rpc_id);
-        // try debug.stream.write(initialize_response);
-        // try debug.stream.write("\n");
-        return true;
+        return try sendGenericRpcResponse(rpc_id, initialize_response);
     }
     else if(std.mem.compare(u8, "initialized", rpc_method) == .Equal) {
+        // Notification
         // params: empty
+        return true;
     }
     else if(std.mem.compare(u8, "shutdown", rpc_method) == .Equal) {
+        // Request
         // params: void
-        return false;
+        return try sendGenericRpcResponse(rpc_id, null_result_response);
     }
     else if(std.mem.compare(u8, "exit", rpc_method) == .Equal) {
+        // Notification
         // params: void
         return false;
     }
     else if(std.mem.compare(u8, "$/cancelRequest", rpc_method) == .Equal) {
+        // Notification
         // id: number|string
+        return true;
+    }
+    else if(std.mem.compare(u8, "workspace/didChangeWorkspaceFolders", rpc_method) == .Equal) {
+        // Notification
+        return true;
+    }
+    else if(std.mem.compare(u8, "workspace/didChangeConfiguration", rpc_method) == .Equal) {
+        // Notification
+        return true;
+    }
+    else if(std.mem.compare(u8, "workspace/didChangeWatchedFiles", rpc_method) == .Equal) {
+        // Notification
+        return true;
+    }
+    else if(std.mem.compare(u8, "workspace/symbol", rpc_method) == .Equal) {
+        // Request
+        return try sendGenericRpcResponse(rpc_id, null_result_response);
+    }
+    else if(std.mem.compare(u8, "workspace/executeCommand", rpc_method) == .Equal) {
+        // Request
+        return try sendGenericRpcResponse(rpc_id, null_result_response);
+    }
+    else if(std.mem.compare(u8, "workspace/applyEdit", rpc_method) == .Equal) {
+        // Request
+        return try sendGenericRpcResponse(rpc_id, edit_not_applied_response);
     }
     // Only requests need a response
-    if(rpc_id > 0) {
-        // try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", error_response.len+rpc_id_digits+6, "{", rpc_id);
-        // try stdout.stream.write(error_response);
-
-        // try debug.stream.write("<--\n");
-        // try debug.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", error_response.len+rpc_id_digits+6, "{", rpc_id);
-        // try debug.stream.write(error_response);
-        // try debug.stream.write("\n");
+    if(rpc_maybe_id) |_| {
+        _ = try sendGenericRpcResponse(rpc_id, error_response);
     }
     return true;
 }
@@ -213,8 +272,8 @@ fn event_loop() !void {
     var bytes_read: usize = 0;
     var offset: usize = 0;
     stdin_poll: while(true) {
-        if(offset >= 18 and std.mem.compare(u8, "Content-Length: ", buffer.items[0..16]) == .Equal) {
-            var body_len: usize = 0;
+        var body_len: usize = 0;
+        if(offset >= 23 and std.mem.compare(u8, "Content-Length: ", buffer.items[0..16]) == .Equal) {
             var index: usize = 16;
             while(index < offset-3) : (index += 1) {
                 const c = buffer.items[index];
@@ -225,9 +284,9 @@ fn event_loop() !void {
                     break;
                 }
             }
-            if(index <= offset) {
+            if(buffer.items[index-4] == '\r') {
                 body_poll: while(offset < body_len+index) {
-                    bytes_read = stdin.read(buffer.items[offset..body_len+index]) catch break :stdin_poll;
+                    bytes_read = stdin.read(buffer.items[offset..body_len+index]) catch return error.JsonContentReadError;
                     if(bytes_read == 0) break;
 
                     offset += bytes_read;
@@ -241,26 +300,23 @@ fn event_loop() !void {
                 var json = (try Json.initWithString(allocator, buffer.items[index..index+body_len])) orelse return;
                 defer json.deinit();
 
+                json.root.dump();
+
                 if(!(try processJsonRpc(json)))
                     break :stdin_poll;
 
-                index += body_len;
-                if(index < offset) {
-                    memmove(u8, buffer.items, buffer.items[index..offset]);
-                    offset -= index;
-                    continue :stdin_poll;
-                }
                 offset = 0;
+                body_len = 0;
             }
         }
-        else if(offset >= 18) {
+        else if(offset >= 23) {
             // try debug.stream.write("==>\n");
             // try debug.stream.write(buffer.items[0..18]);
             // try debug.stream.write("\n");
-            break :stdin_poll;
+            return error.JsonRpcBroken;
         }
 
-        bytes_read = stdin.read(buffer.items[offset..]) catch break;
+        bytes_read = stdin.read(buffer.items[offset..offset+23+body_len]) catch return error.JsonPollError;
         if(bytes_read == 0) break;
 
         offset += bytes_read;
