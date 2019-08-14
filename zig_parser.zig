@@ -311,7 +311,7 @@ const Engine = struct {
                 }
                 // Missing comma after ContainerField
                 else if(id == .ContainerField and token_id == .RBrace) {
-                    try self.reportError(ParseError.MissingComma, token);
+                    // try self.reportError(ParseError.MissingComma, token);
                     index.* -= 1;
                     return try self.action(Id.Comma, token);
                 }

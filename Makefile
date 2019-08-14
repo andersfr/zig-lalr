@@ -11,7 +11,7 @@ run_main: main
 run_json: jsonrpc
 	zig run jsonrpc.zig
 
-main: lalr zig_grammar.actions.zig zig_grammar.types.zig main.zig zig_lexer.zig lexer.tab.zig
+main: lalr zig_grammar.actions.zig zig_grammar.types.zig main.zig zig_lexer.zig lexer.tab.zig zig_parser.zig
 	time zig build-exe --single-threaded ${MODE} main.zig
 
 jsonrpc: lalr json_grammar.actions.zig json_grammar.types.zig json.zig jsonrpc.zig json_lexer.zig zig_parser.zig

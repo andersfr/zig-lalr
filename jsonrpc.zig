@@ -11,13 +11,13 @@ const memmove = std.mem.copy; // This is implemented as memmove so it is safe (f
 
 var stdout_file: std.fs.File = undefined;
 var stdout: std.fs.File.OutStream = undefined;
-var debug: std.fs.File.OutStream = undefined;
+// var debug: std.fs.File.OutStream = undefined;
 
 const initialize_response =
-    \\{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"signatureHelpProvider":{"triggerCharacters":["(",","]},"textDocumentSync":1,"completionProvider":{"resolveProvider":false,"triggerCharacters":[".",":"]},"documentHighlightProvider":false,"codeActionProvider":false,"workspace":{"workspaceFolders":{"supported":true}}}}}
+    \\,"jsonrpc":"2.0","result":{"capabilities":{"signatureHelpProvider":{"triggerCharacters":["(",","]},"textDocumentSync":1,"completionProvider":{"resolveProvider":false,"triggerCharacters":[".",":"]},"documentHighlightProvider":false,"codeActionProvider":false,"workspace":{"workspaceFolders":{"supported":true}}}}}
     ;
 const error_response =
-    \\"jsonrpc":"2.0","error":{"code":-32002,"message":"NotImplemented"}}
+    \\,"jsonrpc":"2.0","error":{"code":-32601,"message":"NotImplemented"}}
     ;
 
 fn processSource(uri: []const u8, version: usize, source: []const u8) !void {
@@ -26,7 +26,6 @@ fn processSource(uri: []const u8, version: usize, source: []const u8) !void {
 
     if(try parser.run(source)) {
         // try debug.stream.print("parsed {} v.{}\n", uri, version);
-        var eit = parser.engine.errors.iterator(0);
         var buffer = try std.Buffer.initSize(std.heap.c_allocator, 0);
         defer buffer.deinit();
 
@@ -36,26 +35,29 @@ fn processSource(uri: []const u8, version: usize, source: []const u8) !void {
         );
         try stream.print("\"{}\",\"diagnostics\":[", uri);
 
-        // Diagnostic: { range, severity?: number, code?: number|string, source?: string, message: string, relatedInformation?: ... }
-        while(eit.next()) |err| {
-            try stream.write(
-                \\{"range":{"start":{
-            );
-            try stream.print("\"line\":{},\"character\":{}", err.line-1, err.start-1);
-            try stream.write(
-                \\},"end":{
-            );
-            try stream.print("\"line\":{},\"character\":{}", err.line-1, err.end);
-            try stream.write(
-                \\}},"severity":1,"source":"zig-lsp","message":
-            );
-            try stream.print("\"{}\",\"code\":\"{}\"", @tagName(err.info), @enumToInt(err.info));
-            try stream.write(
-                \\,"relatedInformation":[]},
-            );
-            // try debug.stream.print("{}\n", err);
+        if(parser.engine.errors.len > 0) {
+            var eit = parser.engine.errors.iterator(0);
+            // Diagnostic: { range, severity?: number, code?: number|string, source?: string, message: string, relatedInformation?: ... }
+            while(eit.next()) |err| {
+                try stream.write(
+                    \\{"range":{"start":{
+                );
+                try stream.print("\"line\":{},\"character\":{}", err.line-1, err.start-1);
+                try stream.write(
+                    \\},"end":{
+                );
+                try stream.print("\"line\":{},\"character\":{}", err.line-1, err.end);
+                try stream.write(
+                    \\}},"severity":1,"source":"zig-lsp","message":
+                );
+                try stream.print("\"{}\",\"code\":\"{}\"", @tagName(err.info), @enumToInt(err.info));
+                try stream.write(
+                    \\,"relatedInformation":[]},
+                );
+                // try debug.stream.print("{}\n", err);
+            }
+            buffer.list.len -= 1;
         }
-        buffer.list.len -= 1;
 
         try stream.write(
             \\]}}
@@ -83,11 +85,18 @@ fn processJsonRpc(jsonrpc: Json) !bool {
 
     // Get ID
     const rpc_id = root.v("id").u(0).?;
+    const rpc_id_digits = blk: {
+        if(rpc_id == 0) break :blk 1;
+        var digits: usize = 1;
+        var value = rpc_id / 10;
+        while(value != 0) : (value /= 10) { digits += 1; }
+        break :blk digits;
+    };
 
     // Get Params
     const rpc_params = root.v("params");
 
-    try debug.stream.print("rpc: id={}, method={}\n", rpc_id, rpc_method);
+    // try debug.stream.print("rpc: id={}, digits={}, method={}\n", rpc_id, rpc_id_digits, rpc_method);
 
     // Process some methods
     if(std.mem.compare(u8, "textDocument/didOpen", rpc_method) == .Equal) {
@@ -136,7 +145,7 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         if(uri.len > 0 and iline >= 0 and icharacter >= 0) {
             const line = @bitCast(u64, iline);
             const character = @bitCast(u64, icharacter);
-            try debug.stream.print("completion [{}] {}:{}\n", uri, line+1, character+1);
+            // try debug.stream.print("completion [{}] {}:{}\n", uri, line+1, character+1);
         }
     }
     else if(std.mem.compare(u8, "textDocument/willSave", rpc_method) == .Equal) {
@@ -155,8 +164,13 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         // capabilities: ClientCapabilities{ ... }
         // trace: 'off'|'messages'|'verbose' (defaults to off)
         // workspaceFolders: WorkspaceFolder[]|null
-        try stdout.stream.print("Content-Length: {}\r\n\r\n", initialize_response.len);
+        try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", initialize_response.len+rpc_id_digits+6, "{", rpc_id);
         try stdout.stream.write(initialize_response);
+
+        // try debug.stream.write("<--\n");
+        // try debug.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", initialize_response.len+digits+6, "{", rpc_id);
+        // try debug.stream.write(initialize_response);
+        // try debug.stream.write("\n");
         return true;
     }
     else if(std.mem.compare(u8, "initialized", rpc_method) == .Equal) {
@@ -166,25 +180,27 @@ fn processJsonRpc(jsonrpc: Json) !bool {
         // params: void
         return false;
     }
+    else if(std.mem.compare(u8, "exit", rpc_method) == .Equal) {
+        // params: void
+        return false;
+    }
     else if(std.mem.compare(u8, "$/cancelRequest", rpc_method) == .Equal) {
         // id: number|string
     }
     // Only requests need a response
     if(rpc_id > 0) {
-        var digits: usize = 0;
-        while(digits*10 < rpc_id) : (digits += 1) {}
-        try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", error_response.len+digits+6, "{", rpc_id);
-        try stdout.stream.write(error_response);
+        // try stdout.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", error_response.len+rpc_id_digits+6, "{", rpc_id);
+        // try stdout.stream.write(error_response);
+
+        // try debug.stream.write("<--\n");
+        // try debug.stream.print("Content-Length: {}\r\n\r\n{}\"id\":{}", error_response.len+rpc_id_digits+6, "{", rpc_id);
+        // try debug.stream.write(error_response);
+        // try debug.stream.write("\n");
     }
     return true;
 }
 
-pub fn main() !void {
-    var file = try std.fs.File.openWrite("/Users/andersfr/Repos/zig-lalr/lsp-debug.txt");
-    defer file.close();
-
-    debug = file.outStream();
-
+fn event_loop() !void {
     var buffer = std.ArrayList(u8).init(allocator);
     defer buffer.deinit();
 
@@ -209,34 +225,39 @@ pub fn main() !void {
                     break;
                 }
             }
-            if(index >= offset)
-                continue :stdin_poll;
+            if(index <= offset) {
+                body_poll: while(offset < body_len+index) {
+                    bytes_read = stdin.read(buffer.items[offset..body_len+index]) catch break :stdin_poll;
+                    if(bytes_read == 0) break;
 
-            body_poll: while(offset < body_len+index) {
-                bytes_read = stdin.read(buffer.items[offset..body_len+index]) catch break :stdin_poll;
-                if(bytes_read == 0) break;
+                    offset += bytes_read;
 
-                offset += bytes_read;
+                    if(offset == buffer.len)
+                        try buffer.resize(buffer.len*2);
+                }
+                // try debug.stream.write("-->\n");
+                // try debug.stream.write(buffer.items[0..index+body_len]);
+                // try debug.stream.write("\n");
+                var json = (try Json.initWithString(allocator, buffer.items[index..index+body_len])) orelse return;
+                defer json.deinit();
 
-                if(offset == buffer.len)
-                    try buffer.resize(buffer.len*2);
+                if(!(try processJsonRpc(json)))
+                    break :stdin_poll;
+
+                index += body_len;
+                if(index < offset) {
+                    memmove(u8, buffer.items, buffer.items[index..offset]);
+                    offset -= index;
+                    continue :stdin_poll;
+                }
+                offset = 0;
             }
-            // try debug.stream.write("-->\n");
-            // try debug.stream.write(buffer.items[0..index+body_len]);
+        }
+        else if(offset >= 18) {
+            // try debug.stream.write("==>\n");
+            // try debug.stream.write(buffer.items[0..18]);
             // try debug.stream.write("\n");
-            var json = (try Json.initWithString(allocator, buffer.items[index..index+body_len])) orelse return;
-            defer json.deinit();
-
-            if(!(try processJsonRpc(json)))
-                break :stdin_poll;
-
-            index += body_len;
-            if(index < offset) {
-                memmove(u8, buffer.items, buffer.items[index..offset]);
-                offset -= index;
-                continue :stdin_poll;
-            }
-            offset = 0;
+            break :stdin_poll;
         }
 
         bytes_read = stdin.read(buffer.items[offset..]) catch break;
@@ -246,7 +267,14 @@ pub fn main() !void {
 
         if(offset == buffer.len)
             try buffer.resize(buffer.len*2);
-
     }
 }
 
+pub fn main() !void {
+    event_loop() catch |e| {
+        var file = try std.fs.File.openWrite("/Users/andersfr/Repos/zig-lalr/lsp-debug.txt");
+        defer file.close();
+        var debug = file.outStream();
+        try debug.stream.print("Quitting: {}\n", e);
+    };
+}

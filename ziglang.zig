@@ -1038,6 +1038,14 @@ pub extern "LALR" const zig_grammar = struct {
     }
 
     // Initializer list
+    fn Expr(Expr: *Node, LCurly: *Token, RBrace: *Token) *Node {
+        const node = try parser.createNode(Node.SuffixOp);
+        node.lhs = arg1;
+        node.op = Node.SuffixOp.Op{ .ArrayInitializer = NodeList.init(parser.allocator) };
+        node.rtoken = arg3;
+        result = &node.base;
+    }
+
     fn Expr(Expr: *Node, LCurly: *Token, InitList: *NodeList, MaybeComma: ?*Token, RBrace: *Token) *Node {
         const node = try parser.createNode(Node.SuffixOp);
         node.lhs = arg1;

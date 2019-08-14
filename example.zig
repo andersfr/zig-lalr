@@ -1,9 +1,10 @@
 const ptr = try fds() + try fds();
 pub async fn nextCodepointSlice(it: *Utf8Iterator) ?[]const u8 {
-    if (it.i >= it.bytes.len) 
+    if (it.i >= it.bytes.len)
         return null
-    
+
     else bla;
+    const x = [0]u8{};
 
     const x = fn() fsda.ds;
     {
@@ -14,10 +15,10 @@ pub async fn nextCodepointSlice(it: *Utf8Iterator) ?[]const u8 {
 }
 
 const s = struct {
-}
+};
 
 fn notype(arg1: type) {
-    const blagh = error{ fdsd; fds },
+    const blagh = error{ fdsd, fds },
     blagh = if(true) if(dsa) dfs;
 
     blk: {};
@@ -53,4 +54,3 @@ const s = struct {
 
     const init = a{ fds: fdas, fds = 2 };
 };
-
