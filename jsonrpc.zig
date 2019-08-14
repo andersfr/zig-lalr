@@ -216,7 +216,8 @@ fn processJsonRpc(jsonrpc: Json) !bool {
     else if(std.mem.compare(u8, "shutdown", rpc_method) == .Equal) {
         // Request
         // params: void
-        return try sendGenericRpcResponse(rpc_id, null_result_response);
+        // return try sendGenericRpcResponse(rpc_id, null_result_response);
+        return false;
     }
     else if(std.mem.compare(u8, "exit", rpc_method) == .Equal) {
         // Notification
@@ -273,8 +274,9 @@ fn event_loop() !void {
     var offset: usize = 0;
     stdin_poll: while(true) {
         var body_len: usize = 0;
-        if(offset >= 23 and std.mem.compare(u8, "Content-Length: ", buffer.items[0..16]) == .Equal) {
-            var index: usize = 16;
+        var index: usize = 0;
+        if(offset >= 21 and std.mem.compare(u8, "Content-Length: ", buffer.items[0..16]) == .Equal) {
+            index = 16;
             while(index < offset-3) : (index += 1) {
                 const c = buffer.items[index];
                 if(c >= '0' and c <= '9')
@@ -285,52 +287,49 @@ fn event_loop() !void {
                 }
             }
             if(buffer.items[index-4] == '\r') {
+                if(buffer.len < index+body_len)
+                    try buffer.resize(index+body_len);
+
                 body_poll: while(offset < body_len+index) {
-                    bytes_read = stdin.read(buffer.items[offset..body_len+index]) catch return error.JsonContentReadError;
-                    if(bytes_read == 0) break;
+                    bytes_read = stdin.read(buffer.items[offset..index+body_len]) catch return;
+                    if(bytes_read == 0) return;
 
                     offset += bytes_read;
-
-                    if(offset == buffer.len)
-                        try buffer.resize(buffer.len*2);
                 }
-                // try debug.stream.write("-->\n");
-                // try debug.stream.write(buffer.items[0..index+body_len]);
-                // try debug.stream.write("\n");
                 var json = (try Json.initWithString(allocator, buffer.items[index..index+body_len])) orelse return;
                 defer json.deinit();
 
-                json.root.dump();
-
                 if(!(try processJsonRpc(json)))
-                    break :stdin_poll;
+                    return;
 
                 offset = 0;
                 body_len = 0;
             }
         }
-        else if(offset >= 23) {
-            // try debug.stream.write("==>\n");
-            // try debug.stream.write(buffer.items[0..18]);
-            // try debug.stream.write("\n");
-            return error.JsonRpcBroken;
+        else if(offset >= 21) {
+            return;
         }
 
-        bytes_read = stdin.read(buffer.items[offset..offset+23+body_len]) catch return error.JsonPollError;
-        if(bytes_read == 0) break;
+        if(offset < 21) {
+            bytes_read = stdin.read(buffer.items[offset..21]) catch return;
+        }
+        else {
+            if(offset == buffer.len)
+                try buffer.resize(buffer.len*2);
+
+            if(index+body_len > buffer.len) {
+                bytes_read = stdin.read(buffer.items[offset..buffer.len]) catch return;
+            }
+            else {
+                bytes_read = stdin.read(buffer.items[offset..index+body_len]) catch return;
+            }
+        }
+        if(bytes_read == 0) return;
 
         offset += bytes_read;
-
-        if(offset == buffer.len)
-            try buffer.resize(buffer.len*2);
     }
 }
 
-pub fn main() !void {
-    event_loop() catch |e| {
-        var file = try std.fs.File.openWrite("/Users/andersfr/Repos/zig-lalr/lsp-debug.txt");
-        defer file.close();
-        var debug = file.outStream();
-        try debug.stream.print("Quitting: {}\n", e);
-    };
+pub fn main() void {
+    event_loop() catch return;
 }

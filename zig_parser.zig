@@ -158,7 +158,7 @@ const Engine = struct {
 
     pub fn reportErrorBackupToken(self: *Self, parse_error: ParseError, token: *Token) !void {
         var ptr = @ptrCast([*]Token, token)-1;
-        while(ptr[0].id == .Newline) : (ptr -= 1) {}
+        while(ptr[0].id == .Newline or ptr[0].id == .LineComment or ptr[0].id == .DocComment) : (ptr -= 1) {}
         try self.reportError(parse_error, &ptr[0]);
     }
 
@@ -305,8 +305,13 @@ const Engine = struct {
                 }
                 // Missing semicolon after AssignExpr
                 else if(id == .AssignExpr and token_id != .Semicolon) {
-                    try self.reportErrorBackupToken(ParseError.MissingSemicolon, token);
-                    index.* -= 1;
+                    if(token_id == .Comma) {
+                        try self.reportError(ParseError.CommaExpectedSemicolon, token);
+                    }
+                    else {
+                        try self.reportErrorBackupToken(ParseError.MissingSemicolon, token);
+                        index.* -= 1;
+                    }
                     return try self.action(Id.Semicolon, token);
                 }
                 // Missing comma after ContainerField
@@ -361,10 +366,10 @@ const Engine = struct {
                 else => {}
             }
         }
-        else if(token_id == .Comma) {
-            try self.reportError(ParseError.CommaExpectedSemicolon, token);
-            return try self.action(Id.Semicolon, token);
-        }
+        // else if(token_id == .Comma) {
+        //     try self.reportError(ParseError.CommaExpectedSemicolon, token);
+        //     return try self.action(Id.Semicolon, token);
+        // }
 
         return ActionResult.Fail;
     }
@@ -459,7 +464,7 @@ pub const Parser = struct {
                 continue;
 
             if(result == .Fail) {
-                result = try self.engine.recovery(token.id, token, &i); 
+                result = try self.engine.recovery(token.id, token, &i);
                 if(result == .Ok)
                     continue;
             }

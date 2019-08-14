@@ -110,6 +110,13 @@ pub const Lexer = struct {
                     _ = self.getc();
                     return Token{ .id = .Comma, .start = self.first, .end = self.index };
                 },
+                'n' => {
+                    _ = self.getc();
+                    if('u' != self.getc()) return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                    if('l' != self.getc()) return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                    if('l' != self.getc()) return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                    return Token{ .id = .Keyword_null, .start = self.first, .end = self.index };
+                },
                 't' => {
                     _ = self.getc();
                     if('r' != self.getc()) return Token{ .id = .Invalid, .start = self.first, .end = self.index };
@@ -125,7 +132,9 @@ pub const Lexer = struct {
                     if('e' != self.getc()) return Token{ .id = .Invalid, .start = self.first, .end = self.index };
                     return Token{ .id = .Keyword_false, .start = self.first, .end = self.index };
                 },
-                else => return Token{ .id = .Invalid, .start = self.first, .end = self.index }
+                else => { 
+                    _ = self.getc(); return Token{ .id = .Invalid, .start = self.first, .end = self.index };
+                }
             }
         }
         // No more input; return Eof
